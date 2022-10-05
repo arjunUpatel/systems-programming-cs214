@@ -7,8 +7,6 @@ int playerMove(int *player, int *dir, int boardX, int boardY)
     int newPlayerX = player[3] + dir[0];
     int newPlayerY = player[2] + dir[1];
 
-    printf("newPlayerX: %d\n", newPlayerX);
-    printf("newPlayerY: %d\n", newPlayerY);
     if (newPlayerY < 0 || newPlayerY >= boardY || newPlayerX < 0 || newPlayerX >= boardX)
         return 0;
 
@@ -159,15 +157,21 @@ void printBoard(char **board, int boardX, int boardY)
     }
 }
 
-int main(int argc, char const *argv[])
+int main(int argc, char const **argv)
 {
     srand(time(NULL));
     // save inputs and create data
     int boardX = atoi(argv[1]);
     int boardY = atoi(argv[2]);
 
+    if (boardX <= 0 || boardY <= 0)
+    {
+        printf("%d", boardX);
+        printf("Invalid arguments: the desired dimension of the board is invalid\n");
+        return EXIT_FAILURE;
+    }
     /* player and monster are represented by arrays in the following manner:
-     * [prevX, prevY, currX, currY]
+     * [prevY, prevX, currY, currX]
      */
     int *player = malloc(4 * sizeof(int));
     player[0] = -1;
@@ -175,15 +179,66 @@ int main(int argc, char const *argv[])
     player[2] = atoi(argv[4]);
     player[3] = atoi(argv[3]);
 
+    if (player[2] < 0 || player[3] < 0 || player[2] >= boardY || player[3] >= boardX)
+    {
+        printf("Invalid arguments: the starting coordinates of the player are invalid\n");
+        free(player);
+        return EXIT_FAILURE;
+    }
+
     int *goal = malloc(2 * sizeof(int));
     goal[0] = atoi(argv[6]);
     goal[1] = atoi(argv[5]);
+
+    if (goal[0] < 0 || goal[1] < 0 || goal[0] >= boardY || goal[1] >= boardX)
+    {
+        printf("Invalid arguments: the starting coordinates of the goal are invalid\n");
+        free(player);
+        free(goal);
+        return EXIT_FAILURE;
+    }
 
     int *monster = malloc(4 * sizeof(int));
     monster[0] = -1;
     monster[1] = -1;
     monster[2] = atoi(argv[8]);
     monster[3] = atoi(argv[7]);
+
+    if (monster[2] < 0 || monster[3] < 0 || monster[2] >= boardY || monster[3] >= boardX)
+    {
+        printf("Invalid arguments: the starting coordinates of the monster are invalid\n");
+        free(player);
+        free(monster);
+        free(goal);
+        return EXIT_FAILURE;
+    }
+
+    if (monster[2] == goal[0] && monster[3] == goal[1])
+    {
+        printf("Invalid arguments: the starting coordinates of the goal and monster are tha same\n");
+        free(player);
+        free(monster);
+        free(goal);
+        return EXIT_FAILURE;
+    }
+
+    if (monster[2] == player[2] && monster[3] == player[3])
+    {
+        printf("monster wins!\n");
+        free(player);
+        free(monster);
+        free(goal);
+        return EXIT_SUCCESS;
+    }
+
+    if (player[2] == goal[0] && player[3] == goal[1])
+    {
+        printf("player wins!\n");
+        free(player);
+        free(monster);
+        free(goal);
+        return EXIT_SUCCESS;
+    }
 
     // create game board
     char **board = malloc(boardY * sizeof(char *));
@@ -195,7 +250,6 @@ int main(int argc, char const *argv[])
             board[i][j] = '.';
         }
     }
-    printf("goal: %d %d\n", goal[0], goal[1]);
     board[goal[0]][goal[1]] = 'G';
     updateBoard(board, player, monster);
     printBoard(board, boardX, boardY);
@@ -276,3 +330,25 @@ int main(int argc, char const *argv[])
     free(monster);
     return EXIT_SUCCESS;
 }
+
+// The assignment says that inputs will be FORMATTED correctly, does that also include that inputs will be valid? - Ames - validity is not guaranteed
+
+// for example, can starting x pos of player or monster or goal be -1 in monster as the input? how do we handle that? - Ames print error and end game
+
+// Do we have to print anything when the monster forfeits turn? - Ames yes
+
+// If the inputted starting position of any of the two elements are the same, are we supposed to instantly delcare the win condition? - Ames, yes
+
+
+
+
+
+
+
+
+// In monster when the monster has to make a random choice and one of those leads it onto the goal, is the monster supposed to make
+// the other choice or forfeit turn?
+
+// What about the case when all 3 of the elements (goal, player, monster) are in the same cell?
+
+// Formatted correclty means that you cannot put in chars, strings or floats in place of integers? aka, the input type will be correct?
