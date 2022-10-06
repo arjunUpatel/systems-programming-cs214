@@ -1,6 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <ctype.h>
+
+int verifyZero(char *arg)
+{
+    int i = 0;
+    if (arg[0] == '-')
+        i = 1;
+    for (; arg[i] != 0; i++)
+    {
+        if (!isdigit(arg[i]))
+            return 0;
+    }
+    return 1;
+}
 
 int playerMove(int *player, int *dir, int boardX, int boardY)
 {
@@ -157,7 +171,7 @@ void printBoard(char **board, int boardX, int boardY)
     }
 }
 
-int main(int argc, char const **argv)
+int main(int argc, char **argv)
 {
     srand(time(NULL));
     // save inputs and create data
@@ -179,6 +193,27 @@ int main(int argc, char const **argv)
     player[2] = atoi(argv[4]);
     player[3] = atoi(argv[3]);
 
+    if (player[2] == 0)
+    {
+        int zero = verifyZero(argv[4]);
+        if (!zero)
+        {
+            printf("Invalid arguments: the starting coordinates of the player are invalid\n");
+            free(player);
+            return EXIT_FAILURE;
+        }
+    }
+    if (player[3] == 0)
+    {
+        int zero = verifyZero(argv[3]);
+        if (!zero)
+        {
+            printf("Invalid arguments: the starting coordinates of the player are invalid\n");
+            free(player);
+            return EXIT_FAILURE;
+        }
+    }
+
     if (player[2] < 0 || player[3] < 0 || player[2] >= boardY || player[3] >= boardX)
     {
         printf("Invalid arguments: the starting coordinates of the player are invalid\n");
@@ -198,11 +233,59 @@ int main(int argc, char const **argv)
         return EXIT_FAILURE;
     }
 
+    if (goal[0] == 0)
+    {
+        int zero = verifyZero(argv[6]);
+        if (!zero)
+        {
+            printf("Invalid arguments: the starting coordinates of the goal are invalid\n");
+            free(player);
+            free(goal);
+            return EXIT_FAILURE;
+        }
+    }
+    if (goal[1] == 0)
+    {
+        int zero = verifyZero(argv[5]);
+        if (!zero)
+        {
+            printf("Invalid arguments: the starting coordinates of the goal are invalid\n");
+            free(player);
+            free(goal);
+            return EXIT_FAILURE;
+        }
+    }
+
     int *monster = malloc(4 * sizeof(int));
     monster[0] = -1;
     monster[1] = -1;
     monster[2] = atoi(argv[8]);
     monster[3] = atoi(argv[7]);
+
+    if (monster[2] == 0)
+    {
+        int zero = verifyZero(argv[8]);
+        if (!zero)
+        {
+            printf("Invalid arguments: the starting coordinates of the player are invalid\n");
+            free(player);
+            free(goal);
+            free(monster);
+            return EXIT_FAILURE;
+        }
+    }
+    if (monster[3] == 0)
+    {
+        int zero = verifyZero(argv[7]);
+        if (!zero)
+        {
+            printf("Invalid arguments: the starting coordinates of the player are invalid\n");
+            free(player);
+            free(goal);
+            free(monster);
+            return EXIT_FAILURE;
+        }
+    }
 
     if (monster[2] < 0 || monster[3] < 0 || monster[2] >= boardY || monster[3] >= boardX)
     {
@@ -259,16 +342,21 @@ int main(int argc, char const **argv)
     {
         scanf(" %c", &input);
         if (feof(stdin))
+        {
+            printf("got here\n");
             break;
+        }
 
-        int *dir = malloc(2 * sizeof(int));
+        int *dir;
         if (input == 'N')
         {
+            dir = malloc(2 * sizeof(int));
             dir[0] = 0;
             dir[1] = 1;
         }
         else if (input == 'E')
         {
+            dir = malloc(2 * sizeof(int));
             dir[0] = 1;
             dir[1] = 0;
         }
@@ -279,6 +367,7 @@ int main(int argc, char const **argv)
         }
         else if (input == 'W')
         {
+            dir = malloc(2 * sizeof(int));
             dir[0] = -1;
             dir[1] = 0;
         }
@@ -295,7 +384,7 @@ int main(int argc, char const **argv)
             continue;
         }
         // ask when win conditions have to be checked, maybe you need to check here
-        if (monster[2] == player[2] && monster[3] == player[3])
+        if (monster[2] == player[2] && monster[3] == player[3
         {
             printf("monster wins!\n");
             break;
@@ -339,16 +428,11 @@ int main(int argc, char const **argv)
 
 // If the inputted starting position of any of the two elements are the same, are we supposed to instantly delcare the win condition? - Ames, yes
 
-
-
-
-
-
-
+// Formatted correclty means that you cannot put in chars, strings or floats in place of integers? aka, the input type will be correct? - TA no, you should expect chars and other stuff as input
 
 // In monster when the monster has to make a random choice and one of those leads it onto the goal, is the monster supposed to make
-// the other choice or forfeit turn?
+// the other choice or forfeit turn? - ask prof
 
-// What about the case when all 3 of the elements (goal, player, monster) are in the same cell?
+// What about the case when all 3 of the elements (goal, player, monster) are in the same cell? - ask prof (rn this case is not really reached because code terminates when it is detected that goal and monster are on the same cell)
 
-// Formatted correclty means that you cannot put in chars, strings or floats in place of integers? aka, the input type will be correct?
+// Do we have to worry about strings instead of chars being inputted from stdin cuz they are technically of the correct format, thats is, only 1 argument?
