@@ -76,7 +76,6 @@ char monsterMove(int *monster, int *player, int *goal)
         int r = rand() % 2;
         if (r == 0)
         {
-            // do stuff with x distance
             if (xDist > 0 && !(monster[2] == goal[0] && monster[3] + 1 == goal[1]))
             {
                 monster[0] = monster[2];
@@ -111,7 +110,6 @@ char monsterMove(int *monster, int *player, int *goal)
         }
         else
         {
-            // do stuff with y distance
             if (yDist > 0 && !(monster[2] + 1 == goal[0] && monster[3] == goal[1]))
             {
                 monster[0] = monster[2];
@@ -174,7 +172,6 @@ void printBoard(char **board, int boardX, int boardY)
 int main(int argc, char **argv)
 {
     srand(time(NULL));
-    // save inputs and create data
     int boardX = atoi(argv[1]);
     int boardY = atoi(argv[2]);
 
@@ -342,10 +339,7 @@ int main(int argc, char **argv)
     {
         scanf(" %c", &input);
         if (feof(stdin))
-        {
-            printf("got here\n");
             break;
-        }
 
         int *dir;
         if (input == 'N')
@@ -362,6 +356,7 @@ int main(int argc, char **argv)
         }
         else if (input == 'S')
         {
+            dir = malloc(2 * sizeof(int));
             dir[0] = 0;
             dir[1] = -1;
         }
@@ -383,18 +378,16 @@ int main(int argc, char **argv)
             printf("invalid move\n");
             continue;
         }
-        // ask when win conditions have to be checked, maybe you need to check here
-        if (monster[2] == player[2] && monster[3] == player[3
+        if (monster[2] == player[2] && monster[3] == player[3])
         {
             printf("monster wins!\n");
             break;
         }
         char monsterMoveState = monsterMove(monster, player, goal);
-        // check monster win conditions
         if (monsterMoveState != '\0')
             printf("monster moves %c\n", monsterMoveState);
         else
-            printf("monster forfeits turn\n"); // ask what to print if monster forfeits turn
+            printf("monster forfeits turn\n");
         if (goal[0] == player[2] && goal[1] == player[3])
         {
             printf("player wins!\n");
@@ -419,20 +412,3 @@ int main(int argc, char **argv)
     free(monster);
     return EXIT_SUCCESS;
 }
-
-// The assignment says that inputs will be FORMATTED correctly, does that also include that inputs will be valid? - Ames - validity is not guaranteed
-
-// for example, can starting x pos of player or monster or goal be -1 in monster as the input? how do we handle that? - Ames print error and end game
-
-// Do we have to print anything when the monster forfeits turn? - Ames yes
-
-// If the inputted starting position of any of the two elements are the same, are we supposed to instantly delcare the win condition? - Ames, yes
-
-// Formatted correclty means that you cannot put in chars, strings or floats in place of integers? aka, the input type will be correct? - TA no, you should expect chars and other stuff as input
-
-// In monster when the monster has to make a random choice and one of those leads it onto the goal, is the monster supposed to make
-// the other choice or forfeit turn? - ask prof
-
-// What about the case when all 3 of the elements (goal, player, monster) are in the same cell? - ask prof (rn this case is not really reached because code terminates when it is detected that goal and monster are on the same cell)
-
-// Do we have to worry about strings instead of chars being inputted from stdin cuz they are technically of the correct format, thats is, only 1 argument?
