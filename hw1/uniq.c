@@ -1,35 +1,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() {
-    char **m = (char**)malloc(sizeof(char*));
-    long *ct = (long*)malloc(sizeof(long));
+int main()
+{
+    char **m = (char **)malloc(sizeof(char *));
+    long *ct = (long *)malloc(sizeof(long));
 
     long len = 0;
     long Max_Len = 1;
-    
+
     int breakpt = 0;
-    while(1) {
+    while (1)
+    {
         long long size = 2;
         int ind = 0;
 
-        char *o = (char*)malloc(size);
-        
-        while(1) {
-            if(scanf("%c",&o[ind]) == EOF) {
+        char *o = (char *)malloc(size);
+
+        while (1)
+        {
+            if (scanf("%c", &o[ind]) == EOF)
+            {
                 breakpt = 1;
                 break;
             }
-            if(o[ind] == '\n') {
+            if (o[ind] == '\n')
+            {
                 o[ind] = '\0';
                 break;
             }
 
             ind++;
-            
-            if(ind == size) {
-                char *temp = (char*)malloc(2*size);
-                for(int i = 0; i < size; i++) {
+
+            if (ind == size)
+            {
+                char *temp = (char *)malloc(2 * size);
+                for (int i = 0; i < size; i++)
+                {
                     temp[i] = o[i];
                 }
                 free(o);
@@ -38,43 +45,51 @@ int main() {
             }
         }
 
-        if(breakpt) {
+        if (breakpt)
+        {
             free(o);
             break;
         }
-        
+
         int indicator = 0;
-        if(len != 0) {
-            int i = len-1;
+        if (len != 0)
+        {
+            int i = len - 1;
             int tf = 1;
             int ind = 0;
-            while((m[i][ind] != '\0') && (o[ind] != '\0')) {
-                if(m[i][ind] != o[ind]) {
+            while ((m[i][ind] != '\0') && (o[ind] != '\0'))
+            {
+                if (m[i][ind] != o[ind])
+                {
                     tf = 0;
                     break;
                 }
                 ind++;
             }
-            if((m[i][ind] == '\0') ^ (o[ind] == '\0')) tf = 0;
+            if ((m[i][ind] == '\0') ^ (o[ind] == '\0'))
+                tf = 0;
 
-            if(tf) {
+            if (tf)
+            {
                 ct[i]++;
                 indicator = 1;
             }
-        
         }
 
-        if(!indicator) {
+        if (!indicator)
+        {
             m[len] = o;
             ct[len] = 1;
             len++;
 
-            if(len >= Max_Len) {
+            if (len >= Max_Len)
+            {
                 Max_Len *= 2;
-                char **tempArr = (char**)malloc((Max_Len)*sizeof(char*));
-                long *tempCt = (long*)malloc((Max_Len)*sizeof(long));
+                char **tempArr = (char **)malloc((Max_Len) * sizeof(char *));
+                long *tempCt = (long *)malloc((Max_Len) * sizeof(long));
 
-                for(int i = 0; i < len; i++) {
+                for (int i = 0; i < len; i++)
+                {
                     tempArr[i] = m[i];
                     tempCt[i] = ct[i];
                 }
@@ -85,18 +100,21 @@ int main() {
                 m = tempArr;
             }
         }
-        else free(o);
+        else
+            free(o);
     }
 
-    for(int i = 0; i < len; i++) {
-        printf("%ld %s\n",ct[i],m[i]);
+    for (int i = 0; i < len; i++)
+    {
+        printf("%ld %s\n", ct[i], m[i]);
     }
 
-    for(int i = 0; i < len; i++) {
+    for (int i = 0; i < len; i++)
+    {
         free(m[i]);
     }
     free(m);
     free(ct);
-    
+
     return 0;
 }
