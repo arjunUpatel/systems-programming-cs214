@@ -320,7 +320,6 @@ int main(int argc, char **argv)
         return EXIT_SUCCESS;
     }
 
-    // create game board
     char **board = malloc(boardY * sizeof(char *));
     for (int i = 0; i < boardY; i++)
     {
@@ -333,34 +332,68 @@ int main(int argc, char **argv)
     board[goal[0]][goal[1]] = 'G';
     updateBoard(board, player, monster);
     printBoard(board, boardX, boardY);
-    char input;
-
-    while (!feof(stdin))
+    int breakpt = 0;
+    while (1)
     {
-        scanf(" %c", &input);
-        if (feof(stdin))
-            break;
+        char *input = malloc(2 * sizeof(char));
+        int size = 2;
+        int idx = 0;
+        while (1)
+        {
+            if (scanf("%c", input + idx) == EOF)
+            {
+                breakpt = 1;
+                break;
+            }
+            if (input[idx] == '\r' || input[idx] == '\n')
+            {
+                input[idx] = '\0';
+                break;
+            }
+            idx++;
+            if (idx == size)
+            {
+                char *temp = malloc(2 * size * sizeof(char));
+                for (int i = 0; i < size; i++)
+                    temp[i] = input[i];
+                free(input);
+                input = temp;
+                size *= 2;
+            }
+        }
 
+        if (breakpt)
+        {
+            free(input);
+            break;
+        }
+
+        if (idx > 1)
+        {
+            printf("invalid input\n");
+            free(input);
+            continue;
+        }
         int *dir;
-        if (input == 'N')
+        if (*input == 'N')
         {
             dir = malloc(2 * sizeof(int));
             dir[0] = 0;
             dir[1] = 1;
         }
-        else if (input == 'E')
+        else if (*input == 'E')
         {
             dir = malloc(2 * sizeof(int));
             dir[0] = 1;
             dir[1] = 0;
         }
-        else if (input == 'S')
+        else if (*input == 'S')
         {
             dir = malloc(2 * sizeof(int));
             dir[0] = 0;
             dir[1] = -1;
         }
-        else if (input == 'W')
+        else if (*input == 'W')
         {
             dir = malloc(2 * sizeof(int));
             dir[0] = -1;
@@ -369,6 +402,7 @@ int main(int argc, char **argv)
         else
         {
             printf("invalid input\n");
+            free(input);
             continue;
         }
         int playerMoveStatus = playerMove(player, dir, boardX, boardY);
@@ -376,7 +410,14 @@ int main(int argc, char **argv)
         if (!playerMoveStatus)
         {
             printf("invalid move\n");
+            free(input);
             continue;
+        }
+        free(input);
+        if (goal[0] == player[2] && goal[1] == player[3])
+        {
+            printf("player wins!\n");
+            break;
         }
         if (monster[2] == player[2] && monster[3] == player[3])
         {
@@ -388,12 +429,7 @@ int main(int argc, char **argv)
             printf("monster moves %c\n", monsterMoveState);
         else
             printf("monster forfeits turn\n");
-        if (goal[0] == player[2] && goal[1] == player[3])
-        {
-            printf("player wins!\n");
-            break;
-        }
-        else if (monster[2] == player[2] && monster[3] == player[3])
+        if (monster[2] == player[2] && monster[3] == player[3])
         {
             printf("monster wins!\n");
             break;
