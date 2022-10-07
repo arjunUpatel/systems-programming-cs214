@@ -4,16 +4,16 @@
 int main()
 {
     char **m = (char **)malloc(sizeof(char *));
-    long *ct = (long *)malloc(sizeof(long));
+    long long *ct = (long long *)malloc(sizeof(long long));
 
-    long len = 0;
-    long Max_Len = 1;
+    long long len = 0;
+    long long Max_Len = 1;
 
     int breakpt = 0;
     while (1)
     {
         long long size = 2;
-        int ind = 0;
+        long long ind = 0;
 
         char *o = (char *)malloc(size);
 
@@ -35,7 +35,7 @@ int main()
             if (ind == size)
             {
                 char *temp = (char *)malloc(2 * size);
-                for (int i = 0; i < size; i++)
+                for (long long i = 0; i < size; i++)
                 {
                     temp[i] = o[i];
                 }
@@ -54,9 +54,9 @@ int main()
         int indicator = 0;
         if (len != 0)
         {
-            int i = len - 1;
-            int tf = 1;
-            int ind = 0;
+            long long i = len - 1;
+            long long tf = 1;
+            long long ind = 0;
             while ((m[i][ind] != '\0') && (o[ind] != '\0'))
             {
                 if (m[i][ind] != o[ind])
@@ -86,9 +86,9 @@ int main()
             {
                 Max_Len *= 2;
                 char **tempArr = (char **)malloc((Max_Len) * sizeof(char *));
-                long *tempCt = (long *)malloc((Max_Len) * sizeof(long));
+                long long *tempCt = (long long *)malloc((Max_Len) * sizeof(long long));
 
-                for (int i = 0; i < len; i++)
+                for (long long i = 0; i < len; i++)
                 {
                     tempArr[i] = m[i];
                     tempCt[i] = ct[i];
@@ -104,12 +104,12 @@ int main()
             free(o);
     }
 
-    for (int i = 0; i < len; i++)
+    for (long long i = 0; i < len; i++)
     {
-        printf("%ld %s\n", ct[i], m[i]);
+        printf("%lld %s\n", ct[i], m[i]);
     }
 
-    for (int i = 0; i < len; i++)
+    for (long long i = 0; i < len; i++)
     {
         free(m[i]);
     }

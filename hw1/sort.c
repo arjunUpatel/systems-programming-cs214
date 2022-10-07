@@ -156,7 +156,7 @@ int main(int argc, char **argv)
         for (long long t = 0; t < index; t += 1)
         {
             long long i;
-            sscanf(input[t], "%d", &i);
+            sscanf(input[t], "%lld", &i);
             balance[t] = i;
         }
         long long i;
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
         printf("^D\n");
         for (long long i = 0; i < index; i += 1)
         {
-            printf("%d\n", balance[i]);
+            printf("%lld\n", balance[i]);
             free(input[i]);
         }
         free(balance);

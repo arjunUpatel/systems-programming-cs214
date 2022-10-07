@@ -30,7 +30,6 @@ int main(int argc, char **argv)
             val /= j;
         }
     }
-
     printf("\n");
     return 0;
 }

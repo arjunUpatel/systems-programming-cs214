@@ -4,7 +4,7 @@
 int main(int argc, char **argv)
 {
     char *val;
-    int swi = 0;
+    long long swi = 0;
     if (argc == 1)
     {
         printf("invalid input\n");
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     while (1)
     {
         long long size = 2;
-        int ind = 0;
+        long long ind = 0;
 
         char *o = (char *)malloc(size);
 
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
             if (ind == size)
             {
                 char *temp = (char *)malloc(2 * size);
-                for (int i = 0; i < size; i++)
+                for (long long i = 0; i < size; i++)
                 {
                     temp[i] = o[i];
                 }
@@ -67,13 +67,13 @@ int main(int argc, char **argv)
             break;
         }
 
-        int first = 0;
+        long long first = 0;
         int indicator = 0;
 
         while (1)
         {
             int tf = 1;
-            int ind = 0;
+            long long ind = 0;
 
             while ((o[ind + first] != '\0'))
             {
@@ -113,6 +113,5 @@ int main(int argc, char **argv)
 
         free(o);
     }
-
     return 0;
 }
