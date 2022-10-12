@@ -3,24 +3,23 @@
 #include<dirent.h>
 #include<string.h>
 
-void findFile(DIR* dirp, char* path, char* pattern) {
+void findFile(char* dirname, char* path, char* pattern) {
   struct dirent* dir;
+  DIR* dirp = opendir(path);
 
-  while ((dir = readdir(dirp)) != NULL) {
-    if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
-      DIR* dirp2 = opendir(dir->d_name);
-      if (dirp2 != NULL) {
-        // dir is a directory, recursively search through it
+  if (dirp == NULL) {
+    if (strstr(dirname, pattern) != NULL) {
+      printf("%s\n", path);
+    }
+  } else {
+    while ((dir = readdir(dirp)) != NULL) {
+      if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
         char* newPath = malloc(strlen(path) + strlen(dir->d_name) + 2);
         strcpy(newPath, path);
         strcat(newPath, "/");
         strcat(newPath, dir->d_name);
-
-        findFile(dirp2, newPath, pattern);
+        findFile(dir->d_name, newPath, pattern);
         free(newPath);
-      } else if (strstr(dir->d_name, pattern) != NULL) {
-        // dir is a file that matches the pattern
-        printf("%s/%s\n", path, dir->d_name);
       }
     }
   }
@@ -30,5 +29,5 @@ void findFile(DIR* dirp, char* path, char* pattern) {
 
 int main(int argc, char** argv) {
   char* pattern = argv[1];
-  findFile(opendir("."), ".", pattern);
+  findFile(".", ".", pattern);
 }
