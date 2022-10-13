@@ -12,6 +12,8 @@
 #include <pwd.h>
 #include <grp.h>
 
+// dont print any file that starts with .
+
 int cmpcasestr(const void *stringOne, const void *stringTwo)
 {
     return strcasecmp(*(const char **)stringOne, *(const char **)stringTwo);
@@ -21,7 +23,7 @@ int main(int argc, char **argv)
 {
     if (argc > 2)
     {
-        printf("Invalid arguments\n");
+        printf("invalid arguments\n");
         return EXIT_FAILURE;
     }
     int flag;
@@ -31,7 +33,7 @@ int main(int argc, char **argv)
         flag = 1;
     else
     {
-        printf("Invalid arguments\n");
+        printf("invalid arguments\n");
         return EXIT_FAILURE;
     }
     struct dirent *dir;
@@ -42,12 +44,11 @@ int main(int argc, char **argv)
     int idx = 0;
     while ((dir = readdir(dirp)) != NULL)
     {
-        if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0)
+        if (dir->d_name[0] != '.')
         {
             int filenameLen = strlen(dir->d_name);
             char *filename = malloc((filenameLen + 1) * sizeof(char));
             strcpy(filename, dir->d_name);
-            strcat(filename, "\0");
             filenames[idx] = filename;
             idx++;
             if (idx == size)
@@ -64,26 +65,29 @@ int main(int argc, char **argv)
 
     closedir(dirp);
     if (errno)
+    {
         printf("error!\n");
+        return EXIT_FAILURE;
+    }
 
     qsort(filenames, idx, sizeof(char *), cmpcasestr);
     for (int i = 0; i < idx; i++)
     {
         if (flag)
         {
-            char *pathname = malloc((strlen(filenames[i]) + 3) * sizeof(char));
-            strcpy(pathname, "./");
-            strcat(pathname, filenames[i]);
-            strcat(pathname, "\0");
-            free(pathname);
             struct stat fileStat;
-            stat(filenames[i], &fileStat);
+            int statVal = stat(filenames[i], &fileStat);
+            if (statVal)
+            {
+                printf("error!\n");
+                return EXIT_FAILURE;
+            }
 
+            // https://stackoverflow.com/questions/10323060/printing-file-permissions-like-ls-l-using-stat2-in-c
             // type
             printf((S_ISDIR(fileStat.st_mode)) ? "d" : "-");
 
             // permissions
-            // https://stackoverflow.com/questions/10323060/printing-file-permissions-like-ls-l-using-stat2-in-c
             printf((fileStat.st_mode & S_IRUSR) ? "r" : "-");
             printf((fileStat.st_mode & S_IWUSR) ? "w" : "-");
             printf((fileStat.st_mode & S_IXUSR) ? "x" : "-");
@@ -95,27 +99,47 @@ int main(int argc, char **argv)
             printf((fileStat.st_mode & S_IXOTH) ? "x" : "-");
 
             // username
-            struct passwd *uname = getpwuid(fileStat.st_uid);
-            printf(" %s", uname->pw_name);
-            // remember to print id if the name is not found
+            struct passwd *pwd = getpwuid(fileStat.st_uid);
+            if (pwd == NULL)
+                printf(" %d", fileStat.st_uid);
+            else if (errno)
+            {
+                printf("error!\n");
+                return EXIT_FAILURE;
+            }
+            else
+                printf(" %s", pwd->pw_name);
 
             // groupname
             struct group *grp = getgrgid(fileStat.st_gid);
-            printf(" %s", grp->gr_name);
+            if (grp == NULL)
+                printf(" %d", fileStat.st_gid);
+            else if (errno)
+            {
+                printf("error!\n");
+                return EXIT_FAILURE;
+            }
+            else
+                printf(" %s", grp->gr_name);
 
             // size
             printf(" %ld", fileStat.st_size);
 
             // time modified
-            struct tm ts;
-            ts = *localtime(&fileStat.st_mtime);
+            struct tm *ts;
+            ts = localtime(&fileStat.st_mtime);
+            if (ts == NULL || errno)
+            {
+                printf("error!\n");
+                return EXIT_FAILURE;
+            }
             const char *months[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-            printf(" %s", months[ts.tm_mon - 1]);
-            printf(" %d", ts.tm_mday);
-            printf(" %d:", ts.tm_hour);
-            if (ts.tm_min / 10 == 0)
+            printf(" %s", months[ts->tm_mon]);
+            printf(" %d", ts->tm_mday);
+            printf(" %d:", ts->tm_hour);
+            if (ts->tm_min / 10 == 0)
                 printf("0");
-            printf("%d", ts.tm_min);
+            printf("%d", ts->tm_min);
 
             // filename
             printf(" %s\n", filenames[i]);
