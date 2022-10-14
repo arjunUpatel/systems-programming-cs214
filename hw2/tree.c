@@ -21,7 +21,7 @@ void printDir(char* path, int depth) {
     char** orderedDirs = calloc(maxSize, sizeof(char*));
 
     while ((dir = readdir(dirp)) != NULL) {
-      if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
+      if (dir->d_name[0] == '.' || strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
         continue;
       }
 
