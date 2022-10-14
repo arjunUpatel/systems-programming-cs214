@@ -7,11 +7,10 @@ void findFile(char* dirname, char* path, char* pattern) {
   struct dirent* dir;
   DIR* dirp = opendir(path);
 
-  if (dirp == NULL) {
-    if (strstr(dirname, pattern) != NULL) {
-      printf("%s\n", path);
-    }
-  } else {
+  if (strstr(dirname, pattern) != NULL) {
+    printf("%s\n", path);
+  }
+  if (dirp != NULL) {
     while ((dir = readdir(dirp)) != NULL) {
       if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
         char* newPath = malloc(strlen(path) + strlen(dir->d_name) + 2);
