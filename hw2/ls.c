@@ -12,8 +12,6 @@
 #include <pwd.h>
 #include <grp.h>
 
-// dont print any file that starts with .
-
 int cmpcasestr(const void *stringOne, const void *stringTwo)
 {
     return strcasecmp(*(const char **)stringOne, *(const char **)stringTwo);
@@ -83,10 +81,13 @@ int main(int argc, char **argv)
                 return EXIT_FAILURE;
             }
 
-            // https://stackoverflow.com/questions/10323060/printing-file-permissions-like-ls-l-using-stat2-in-c
             // type
-            printf((S_ISDIR(fileStat.st_mode)) ? "d" : "-");
-
+            DIR *childDirp = opendir(filenames[i]);
+            if (childDirp == NULL)
+                printf("-");
+            else
+                printf("d");
+            closedir(childDirp);
             // permissions
             printf((fileStat.st_mode & S_IRUSR) ? "r" : "-");
             printf((fileStat.st_mode & S_IWUSR) ? "w" : "-");
