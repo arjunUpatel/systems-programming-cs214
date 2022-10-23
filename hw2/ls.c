@@ -77,7 +77,7 @@ int main(int argc, char **argv)
             int statVal = stat(filenames[i], &fileStat);
             if (statVal)
             {
-                printf("error!\n");
+                printf("error accessing file stat\n");
                 return EXIT_FAILURE;
             }
 
@@ -131,7 +131,7 @@ int main(int argc, char **argv)
             ts = localtime(&fileStat.st_mtime);
             if (ts == NULL || errno)
             {
-                printf("error!\n");
+                printf("error retreiving modified time of the file\n");
                 return EXIT_FAILURE;
             }
             const char *months[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};

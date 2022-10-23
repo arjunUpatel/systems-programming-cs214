@@ -16,7 +16,7 @@ void findFile(char *dirname, char *path, char *pattern)
     {
         while ((dir = readdir(dirp)) != NULL)
         {
-            if (strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0)
+            if (dir->d_name[0] != '.' && strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0)
             {
                 char *newPath = malloc(strlen(path) + strlen(dir->d_name) + 2);
                 strcpy(newPath, path);
@@ -27,12 +27,16 @@ void findFile(char *dirname, char *path, char *pattern)
             }
         }
     }
-
     closedir(dirp);
 }
 
 int main(int argc, char **argv)
 {
+    if (argc > 2 || argc < 2)
+    {
+        printf("invalid arguments\n");
+        return EXIT_FAILURE;
+    }
     char *pattern = argv[1];
     findFile(".", ".", pattern);
 }
