@@ -8,7 +8,7 @@ void findFile(char *dirname, char *path, char *pattern)
     struct dirent *dir;
     DIR *dirp = opendir(path);
 
-    if (strstr(dirname, pattern) != NULL)
+    if (strlen(dirname) > 0 && strstr(dirname, pattern) != NULL)
     {
         printf("%s\n", path);
     }
@@ -38,5 +38,5 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
     char *pattern = argv[1];
-    findFile(".", ".", pattern);
+    findFile("", ".", pattern);
 }
