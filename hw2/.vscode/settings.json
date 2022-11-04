@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    ".env": "env",
+    "unistd.h": "c"
+  }
+}
