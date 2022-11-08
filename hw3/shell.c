@@ -7,14 +7,64 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-int curJobID = 0;
+typedef struct Job
+{
+  int jobid;
+  pid_t pid;
+  // 0 = running, 1 = stopped, 2 = terminated
+  int status;
+  int inBackground;
+  char *command;
+} Job;
+
+int maxJobs = 5;
+int numJobs = 0;
 pid_t foregroundPID = -1;
 
-void pathMapper(int isBackground)
+char *statusToString(int status)
 {
-  curJobID++;
+  switch (status)
+  {
+  case 0:
+    return "Running";
+  case 1:
+    return "Stopped";
+  case 2:
+    return "Terminated";
+  default:
+    return "";
+  }
+}
+
+void printJobs(Job **jobs)
+{
+  for (int i = 0; i < numJobs; i++)
+  {
+    printf("[%d] %d %s %s\n", jobs[i]->jobid, jobs[i]->pid, statusToString(jobs[i]->status), jobs[i]->command);
+  }
+}
+
+void addJob(Job **jobs, pid_t pid, int jobid, int inBackground, char *cmd)
+{
+  if (numJobs > maxJobs)
+  {
+    maxJobs *= 2;
+    jobs = realloc(jobs, maxJobs * sizeof(Job *));
+  }
+
+  jobs[numJobs - 1] = malloc(sizeof(Job) + strlen(cmd) + 1);
+  jobs[numJobs - 1]->pid = pid;
+  jobs[numJobs - 1]->jobid = jobid;
+  jobs[numJobs - 1]->status = 0;
+  jobs[numJobs - 1]->inBackground = inBackground;
+  jobs[numJobs - 1]->command = cmd;
+}
+
+void createProcess(char **args, int inBackground, Job **jobs)
+{
+  numJobs++;
   pid_t pid = 0;
-  int jobid = curJobID;
+  int jobid = numJobs;
   int status;
 
   pid = fork();
@@ -24,23 +74,16 @@ void pathMapper(int isBackground)
   {
     signal(SIGINT, SIG_DFL);
     signal(SIGTSTP, SIG_DFL);
-    char *path = "./hi";
-    if (access(path, X_OK) == 0)
-    {
-      sleep(3);
-      char *argv[] = {path, NULL};
-      execv(argv[0], argv);
-      exit(0);
-    }
-    else
-    {
-      printf("%s: No such file or directory\n", path);
-      exit(1);
-    }
+
+    sleep(3);
+    execv(args[0], args);
+    exit(0);
   }
   if (pid > 0)
   {
-    if (isBackground)
+    addJob(jobs, pid, jobid, inBackground, args[0]);
+
+    if (inBackground)
     {
       printf("[%d] %d\n", jobid, pid);
       foregroundPID = -1;
@@ -49,14 +92,9 @@ void pathMapper(int isBackground)
     {
       pid = waitpid(pid, &status, WUNTRACED);
       foregroundPID = -1;
-      printf("End of process %d, job id %d: ", pid, jobid);
-      if (WIFEXITED(status))
-      {
-        printf("The process ended with exit(%d).\n", WEXITSTATUS(status));
-      }
       if (WIFSIGNALED(status))
       {
-        printf("The process ended with kill (%d).\n", WTERMSIG(status));
+        printf("\n[%d] %d terminated by signal %d\n", jobid, pid, WTERMSIG(status));
       }
     }
   }
@@ -83,11 +121,16 @@ int main()
   signal(SIGINT, handleSigint);
   signal(SIGTSTP, handleSigtstp);
 
+  Job **jobs = calloc(maxJobs, sizeof(Job *));
+
   while (1)
   {
     char str[20];
     printf("> ");
     scanf("%19s", str);
-    pathMapper(0);
+
+    char *args[] = {"./hi", NULL};
+    createProcess(args, 0, jobs);
+    printJobs(jobs);
   }
 }
