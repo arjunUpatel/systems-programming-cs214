@@ -9,7 +9,7 @@
 
 typedef struct Job
 {
-  int jobid;
+  int jobID;
   pid_t pid;
   // 0 = running, 1 = stopped, 2 = terminated
   int status;
@@ -17,9 +17,11 @@ typedef struct Job
   char *command;
 } Job;
 
+Job **jobs;
+
 int maxJobs = 5;
 int numJobs = 0;
-pid_t foregroundPID = -1;
+int foregroundJobID = -1;
 
 char *statusToString(int status)
 {
@@ -40,11 +42,11 @@ void printJobs(Job **jobs)
 {
   for (int i = 0; i < numJobs; i++)
   {
-    printf("[%d] %d %s %s\n", jobs[i]->jobid, jobs[i]->pid, statusToString(jobs[i]->status), jobs[i]->command);
+    printf("[%d] %d %s %s\n", jobs[i]->jobID, jobs[i]->pid, statusToString(jobs[i]->status), jobs[i]->command);
   }
 }
 
-void addJob(Job **jobs, pid_t pid, int jobid, int inBackground, char *cmd)
+void addJob(Job **jobs, pid_t pid, int jobID, int inBackground, char *cmd)
 {
   if (numJobs > maxJobs)
   {
@@ -54,7 +56,7 @@ void addJob(Job **jobs, pid_t pid, int jobid, int inBackground, char *cmd)
 
   jobs[numJobs - 1] = malloc(sizeof(Job) + strlen(cmd) + 1);
   jobs[numJobs - 1]->pid = pid;
-  jobs[numJobs - 1]->jobid = jobid;
+  jobs[numJobs - 1]->jobID = jobID;
   jobs[numJobs - 1]->status = 0;
   jobs[numJobs - 1]->inBackground = inBackground;
   jobs[numJobs - 1]->command = cmd;
@@ -64,55 +66,118 @@ void createProcess(char **args, int inBackground, Job **jobs)
 {
   numJobs++;
   pid_t pid = 0;
-  int jobid = numJobs;
+  int jobID = numJobs;
   int status;
 
   pid = fork();
-  foregroundPID = pid;
+  foregroundJobID = jobID;
 
   if (pid == 0)
   {
     signal(SIGINT, SIG_DFL);
     signal(SIGTSTP, SIG_DFL);
 
-    sleep(3);
+    sleep(5);
     execv(args[0], args);
     exit(0);
   }
   if (pid > 0)
   {
-    addJob(jobs, pid, jobid, inBackground, args[0]);
+    addJob(jobs, pid, jobID, inBackground, args[0]);
 
     if (inBackground)
     {
-      printf("[%d] %d\n", jobid, pid);
-      foregroundPID = -1;
+      printf("[%d] %d\n", jobID, pid);
+      foregroundJobID = -1;
     }
     else
     {
       pid = waitpid(pid, &status, WUNTRACED);
-      foregroundPID = -1;
+      foregroundJobID = -1;
       if (WIFSIGNALED(status))
       {
-        printf("\n[%d] %d terminated by signal %d\n", jobid, pid, WTERMSIG(status));
+        printf("\n[%d] %d terminated by signal %d\n", jobID, pid, WTERMSIG(status));
       }
     }
   }
 }
 
+void handleFg(int jobID)
+{
+  if (jobID <= numJobs)
+  {
+    Job *job = jobs[jobID - 1];
+    if (job->status == 1 || job->inBackground == 1)
+    {
+      if (job->status == 1)
+      {
+        kill(job->pid, SIGCONT);
+      }
+      job->inBackground = 0;
+      job->status = 0;
+      foregroundJobID = job->jobID;
+
+      int status;
+      waitpid(job->pid, &status, WUNTRACED);
+      foregroundJobID = -1;
+      if (WIFSIGNALED(status))
+      {
+        printf("\n[%d] %d terminated by signal %d\n", job->jobID, job->pid, WTERMSIG(status));
+      }
+    }
+    else
+    {
+      printf("Job is not suspended\n");
+    }
+  }
+}
+
+void handleBg(int jobID)
+{
+  if (jobID <= numJobs)
+  {
+    Job *job = jobs[jobID - 1];
+    if (job->status == 1)
+    {
+      kill(job->pid, SIGCONT);
+      job->status = 0;
+    }
+    else
+    {
+      printf("Job is not suspended\n");
+    }
+  }
+}
+
+void handleKill(int jobID)
+{
+  if (jobID <= numJobs)
+  {
+    Job *job = jobs[jobID - 1];
+    job->status = 2;
+    kill(job->pid, SIGTERM);
+  }
+}
+
 void handleSigint(int signum)
 {
-  if (foregroundPID > -1)
+  if (foregroundJobID > -1)
   {
-    kill(foregroundPID, SIGINT);
+    Job *job = jobs[foregroundJobID - 1];
+    job->status = 2;
+    kill(job->pid, SIGINT);
+    foregroundJobID = -1;
   }
 }
 
 void handleSigtstp(int signum)
 {
-  if (foregroundPID > -1)
+  if (foregroundJobID > -1)
   {
-    kill(foregroundPID, SIGTSTP);
+    Job *job = jobs[foregroundJobID - 1];
+    job->status = 1;
+    kill(job->pid, SIGTSTP);
+    foregroundJobID = -1;
   }
 }
 
@@ -121,7 +186,7 @@ int main()
   signal(SIGINT, handleSigint);
   signal(SIGTSTP, handleSigtstp);
 
-  Job **jobs = calloc(maxJobs, sizeof(Job *));
+  jobs = calloc(maxJobs, sizeof(Job *));
 
   while (1)
   {
@@ -129,8 +194,20 @@ int main()
     printf("> ");
     scanf("%19s", str);
 
-    char *args[] = {"./hi", NULL};
-    createProcess(args, 0, jobs);
+    if (strcmp(str, "bg") == 0)
+    {
+      handleBg(1);
+    }
+    else if (strcmp(str, "fg") == 0)
+    {
+      handleFg(1);
+    }
+    else
+    {
+      char *args[] = {"./hi", NULL};
+      createProcess(args, 0, jobs);
+    }
+
     printJobs(jobs);
   }
 }
