@@ -1,11 +1,11 @@
 #include <stdbool.h>
 
-struct InputParse
+typedef struct InputParse
 {
     char **parsedInput;
     bool ampersandPresent;
-};
-typedef struct InputParse InputParse;
+    int parseLen;
+} InputParse;
 
 InputParse *parseInput(char *input);
 void freeInputParse(InputParse *inputParse);

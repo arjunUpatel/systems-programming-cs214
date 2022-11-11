@@ -67,7 +67,7 @@ InputParse *parseInput(char *input)
     InputParse *inputParse = malloc(sizeof(InputParse));
     inputParse->parsedInput = parsedInput;
     inputParse->ampersandPresent = ampersandPresent;
-
+    inputParse->parseLen = idx;
     return inputParse;
 }
 
@@ -81,7 +81,7 @@ void freeInputParse(InputParse *inputParse)
 
 void printParsedInput(InputParse *inputParse)
 {
-    for (unsigned long long i = 0; inputParse->parsedInput[i] != NULL; i++)
+    for (unsigned long long i = 0; i < inputParse->parseLen; i++)
         printf("%lld: %s\n", i, inputParse->parsedInput[i]);
     printf("ampersandPresent: %s\n\n", inputParse->ampersandPresent ? "true" : "false");
 }
