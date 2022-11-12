@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "parser.h"
+#include "process.h"
 
 // correct format questions
 // how many ampersands allowed in input?
@@ -8,8 +9,12 @@
 
 int main()
 {
+  Process **jobs = calloc(5, sizeof(Process *));
+  int numJobs = 0;
+
   while (1)
   {
+    printf("> ");
     long long bufLen = 1;
     long long idx = 0;
     char *bufTemp = malloc(sizeof(char));
@@ -57,9 +62,12 @@ int main()
       buf[i] = bufTemp[i];
     free(bufTemp);
 
-    printf("input: %s\n", buf);
+    // printf("input: %s\n", buf);
+
     InputParse *parsedInput = parseInput(buf);
-    printParsedInput(parsedInput);
+    createProcess(parsedInput, jobs, numJobs);
+
+    // printParsedInput(parsedInput);
     freeInputParse(parsedInput);
     free(buf);
   }
