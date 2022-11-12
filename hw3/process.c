@@ -162,7 +162,7 @@ void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
     {
       // add process to background
       Process *process = malloc(sizeof(Process));
-      process->jid = jobs[numJobs]->jid + 1;
+      process->jid = numJobs - 1 >= 0 ? jobs[numJobs - 1]->jid + 1 : 1;
       process->pid = pid;
       process->status = 0;
       process->command = inputParse->parsedInput[0];
