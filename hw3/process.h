@@ -9,4 +9,4 @@ typedef struct Process
   char *command;
 } Process;
 
-void createProcess(InputParse *inputParse, Process **bgJobs, int numJobs);
+void createProcess(InputParse *inputParse, Process **jobs, int numJobs);

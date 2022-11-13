@@ -3,6 +3,8 @@
 #include <string.h>
 #include "parser.h"
 
+// BUG: command ending in ctrl-c/ctrl-z causes memory leak
+
 InputParse *parseInput(char *input)
 {
   unsigned long long len = 1;

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include "parser.h"
 #include "process.h"
 
@@ -7,10 +8,33 @@
 // how many ampersands allowed in input?
 // will ampersand only be placed at the end
 
+pid_t foregroundPID = -1;
+
+void handleSigint(int signum)
+{
+  if (foregroundPID > -1)
+  {
+    kill(foregroundPID, SIGINT);
+    foregroundPID = -1;
+  }
+}
+
+void handleSigtstp(int signum)
+{
+  if (foregroundPID > -1)
+  {
+    kill(foregroundPID, SIGTSTP);
+    foregroundPID = -1;
+  }
+}
+
 int main()
 {
   Process **jobs = calloc(5, sizeof(Process *));
   int numJobs = 0;
+
+  signal(SIGINT, handleSigint);
+  signal(SIGTSTP, handleSigtstp);
 
   while (1)
   {

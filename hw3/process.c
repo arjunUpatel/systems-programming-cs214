@@ -10,6 +10,8 @@
 #include "parser.h"
 #include "process.h"
 
+extern pid_t foregroundPID;
+
 void createJob(Process **jobs, int numJobs, Process *process)
 {
 }
@@ -172,7 +174,9 @@ void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
     }
     else
     {
+      foregroundPID = pid;
       pid = waitpid(pid, &status, WUNTRACED);
+      foregroundPID = -1;
       if (WIFSIGNALED(status))
       {
         printf("\n[%d] %d terminated by signal %d\n", 0, pid, WTERMSIG(status));
