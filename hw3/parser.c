@@ -59,8 +59,26 @@ InputParse *parseInput(char *input)
   if (parsedInputTemp[idx - 1][strlen(parsedInputTemp[idx - 1]) - 1] == '&')
     ampersandPresent = true;
 
-  parsedInputTemp[idx] = NULL;
-  idx++;
+  if (ampersandPresent && strlen(parsedInputTemp[idx - 1]) == 1)
+  {
+    free(parsedInputTemp[idx - 1]);
+    parsedInputTemp[idx - 1] = NULL;
+  }
+  else
+  {
+    if (ampersandPresent)
+    {
+      unsigned long long newStrLen = strlen(parsedInputTemp[idx - 1]);
+      char *newStr = malloc(newStrLen * sizeof(char));
+      for (unsigned long long l = 0; l < newStrLen; l++)
+        newStr[l] = parsedInputTemp[idx - 1][l];
+      newStr[newStrLen - 1] = '\0';
+      free(parsedInputTemp[idx - 1]);
+      parsedInputTemp[idx - 1] = newStr;
+    }
+    parsedInputTemp[idx] = NULL;
+    idx++;
+  }
   char **parsedInput = malloc(idx * sizeof(char *));
   for (unsigned long long l = 0; l < idx; l++)
     parsedInput[l] = parsedInputTemp[l];
