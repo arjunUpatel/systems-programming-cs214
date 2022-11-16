@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include "parser.h"
 #include "process.h"
 
 extern pid_t foregroundPID;
@@ -33,7 +32,9 @@ char *statusToString(int status)
 
 void printJob(Process *process)
 {
-  printf("[%d] %d %s %s\n", process->jid, process->pid, statusToString(process->status), process->command);
+  printf("[%d] %d %s ", process->jid, process->pid, statusToString(process->status));
+  for (int i = 0; process->inputParse->parsedInput[i] != NULL; i++)
+    printf("%s ", process->inputParse->parsedInput[i]);
 }
 
 void printJobs(Process **jobs, int numJobs)
@@ -42,27 +43,15 @@ void printJobs(Process **jobs, int numJobs)
     printJob(jobs[i]);
 }
 
-// int isFileExistsStats(const char *path)
-// {
-//     struct stat stats;
-//     stat(path, &stats);
+bool isDirectory(const char *path)
+{
+  struct stat stats;
+  stat(path, &stats);
 
-//     // Check for file existence
-//     if (stats.st_mode & F_OK)
-//         return 1;
-//     return 0;
-// }
-
-// int isDirectoryExists(const char *path)
-// {
-//     struct stat stats;
-//     stat(path, &stats);
-
-//     // Check for file existence
-//     if (S_ISDIR(stats.st_mode))
-//         return 1;
-//     return 0;
-// }
+  if (S_ISDIR(stats.st_mode))
+    return true;
+  return false;
+}
 
 bool isCommand(char *arg)
 {
@@ -73,11 +62,6 @@ bool isCommand(char *arg)
 
 bool isValidPath(char *arg)
 {
-  // struct stat stats;
-  // stat(arg, &stats);
-  // if ((stats.st_mode & F_OK) || S_ISDIR(stats.st_mode))
-  //   return true;
-  // return false;
   if (access(arg, F_OK) == -1)
     return false;
   return true;
@@ -134,6 +118,12 @@ void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
   {
     pathname = malloc((strlen(inputParse->parsedInput[0]) + 1) * sizeof(char));
     strcpy(pathname, inputParse->parsedInput[0]);
+    if (isDirectory(pathname))
+    {
+      printf("%s: Is a directory\n", pathname);
+      free(pathname);
+      return;
+    }
     if (!isValidPath(pathname))
     {
       printf("%s: No such file or directory\n", pathname);
@@ -167,7 +157,7 @@ void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
       process->jid = numJobs - 1 >= 0 ? jobs[numJobs - 1]->jid + 1 : 1;
       process->pid = pid;
       process->status = 0;
-      process->command = inputParse->parsedInput[0];
+      process->inputParse = inputParse;
       createJob(jobs, numJobs, process);
 
       printf("[%d] %d\n", process->jid, pid);
@@ -176,6 +166,8 @@ void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
     {
       foregroundPID = pid;
       pid = waitpid(pid, &status, WUNTRACED);
+      free(pathname);
+      free(args);
       foregroundPID = -1;
       if (WIFSIGNALED(status))
       {
@@ -216,4 +208,10 @@ void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
     free(pathname);
     free(args);
   }
+}
+
+void freeProcess(Process *process)
+{
+  free(process->inputParse);
+  free(process);
 }
