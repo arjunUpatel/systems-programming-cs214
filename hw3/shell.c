@@ -2,11 +2,8 @@
 #include <stdlib.h>
 #include <signal.h>
 #include "parser.h"
+#include "stack.h"
 #include "process.h"
-
-// correct format questions
-// how many ampersands allowed in input?
-// will ampersand only be placed at the end
 
 pid_t foregroundPID = -1;
 
@@ -30,8 +27,11 @@ void handleSigtstp(int signum)
 
 int main()
 {
-  Process **jobs = calloc(5, sizeof(Process *));
-  int numJobs = 0;
+  // Process **jobs = calloc(5, sizeof(Process *));
+  Stack *jobStack = malloc(sizeof(Stack));
+  jobStack->head = NULL;
+
+  // int numJobs = 0;
 
   signal(SIGINT, handleSigint);
   signal(SIGTSTP, handleSigtstp);
@@ -89,10 +89,11 @@ int main()
     // printf("input: %s\n", buf);
 
     InputParse *parsedInput = parseInput(buf);
-    createProcess(parsedInput, jobs, numJobs);
+    createProcess(parsedInput, jobStack);
 
     // printParsedInput(parsedInput);
-    freeInputParse(parsedInput);
+    // freeInputParse(parsedInput);
     free(buf);
   }
+  freeStack(jobStack);
 }

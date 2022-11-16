@@ -7,13 +7,16 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <stdbool.h>
+#include "stack.h"
 #include "process.h"
+#include "parser.h"
 
 extern pid_t foregroundPID;
 
-void createJob(Process **jobs, int numJobs, Process *process)
-{
-}
+// void createJob(Process **jobs, int numJobs, Process *process)
+// {
+// }
 
 char *statusToString(int status)
 {
@@ -78,7 +81,13 @@ int isBuiltIn(char *arg)
   return -1;
 }
 
-void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
+void freeProcess(Process *process)
+{
+  freeInputParse(process->inputParse);
+  free(process);
+}
+
+void createProcess(InputParse *inputParse, Stack *jobStack)
 {
   char *pathname;
   if (isCommand(inputParse->parsedInput[0]))
@@ -149,23 +158,22 @@ void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
   }
   if (pid > 0)
   {
+    int jid = jobStack->head != NULL ? jobStack->head->element->jid + 1 : 1;
+    Process *process = malloc(sizeof(Process));
+    process->jid = jid;
+    process->pid = pid;
+    process->status = 0;
+    process->inputParse = inputParse;
+    push(jobStack, process);
     // do parent stuff
     if (inputParse->ampersandPresent)
-    {
-      // add process to background
-      Process *process = malloc(sizeof(Process));
-      process->jid = numJobs - 1 >= 0 ? jobs[numJobs - 1]->jid + 1 : 1;
-      process->pid = pid;
-      process->status = 0;
-      process->inputParse = inputParse;
-      createJob(jobs, numJobs, process);
-
       printf("[%d] %d\n", process->jid, pid);
-    }
     else
     {
       foregroundPID = pid;
       pid = waitpid(pid, &status, WUNTRACED);
+      Process *process = pop(jobStack);
+      freeProcess(process);
       free(pathname);
       free(args);
       foregroundPID = -1;
@@ -208,10 +216,4 @@ void createProcess(InputParse *inputParse, Process **jobs, int numJobs)
     free(pathname);
     free(args);
   }
-}
-
-void freeProcess(Process *process)
-{
-  free(process->inputParse);
-  free(process);
 }

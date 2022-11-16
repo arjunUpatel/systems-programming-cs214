@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -g -Wall -Wvla -fsanitize=address
 LDFLAGS =
-OBJFILES = process.o parser.o shell.o
+OBJFILES = parser.o process.o stack.o shell.o
 TARGET = shell
 
 all: $(TARGET)

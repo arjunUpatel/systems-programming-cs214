@@ -1,5 +1,10 @@
+#pragma once
+
 #include <sys/types.h>
 #include "parser.h"
+#include "stack.h"
+
+typedef struct Stack Stack;
 
 typedef struct Process
 {
@@ -10,6 +15,6 @@ typedef struct Process
   InputParse *inputParse;
 } Process;
 
-void createProcess(InputParse *inputParse, Process **jobs, int numJobs);
+void createProcess(InputParse *inputParse, Stack *jobStack);
 void printJob(Process *process);
 void freeProcess(Process *process);
