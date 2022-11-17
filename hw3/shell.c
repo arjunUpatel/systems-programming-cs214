@@ -6,25 +6,25 @@
 #include "stack.h"
 #include "process.h"
 
+// void handleSigint(int signum)
+// {
+//   if (foregroundPID > -1)
+//   {
+//     kill(foregroundPID, SIGINT);
+//     foregroundPID = -1;
+//   }
+// }
+
+// void handleSigtstp(int signum)
+// {
+//   if (foregroundPID > -1)
+//   {
+//     kill(foregroundPID, SIGTSTP);
+//     foregroundPID = -1;
+//   }
+// }
+
 pid_t foregroundPID = -1;
-
-void handleSigint(int signum)
-{
-  if (foregroundPID > -1)
-  {
-    kill(foregroundPID, SIGINT);
-    foregroundPID = -1;
-  }
-}
-
-void handleSigtstp(int signum)
-{
-  if (foregroundPID > -1)
-  {
-    kill(foregroundPID, SIGTSTP);
-    foregroundPID = -1;
-  }
-}
 
 int main()
 {
@@ -36,8 +36,8 @@ int main()
 
   // int numJobs = 0;
 
-  signal(SIGINT, handleSigint);
-  signal(SIGTSTP, handleSigtstp);
+  // signal(SIGINT, handleSigint);
+  // signal(SIGTSTP, handleSigtstp);
 
   while (1)
   {

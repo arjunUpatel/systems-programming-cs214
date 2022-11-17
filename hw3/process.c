@@ -14,6 +14,13 @@
 
 extern pid_t foregroundPID;
 
+// bool f_sigchld = false;
+
+// void handle_sigchld(int signum)
+// {
+//   f_sigchld = true;
+// }
+
 char *statusToString(int status)
 {
   switch (status)
@@ -85,6 +92,7 @@ void freeProcess(Process *process)
 
 void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
 {
+  // signal(SIGCHLD, handle_sigchld);
   char *pathname;
   if (isCommand(inputParse->parsedInput[0]))
   {
@@ -141,20 +149,27 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   args[0] = pathname;
   for (int i = 1; i < inputParse->parseLen; i++)
     args[i] = inputParse->parsedInput[i];
-
-  pid_t pid;
   int status;
-  pid = fork();
+  sigset_t mask_all, mask_one, prev_one;
+  sigfillset(&mask_all);
+  sigemptyset(&mask_one);
+  sigaddset(&mask_one, SIGCHLD);
+  // sigset_t mask, prev;
+  // // sigemptyset(&mask_sigchld);
+  // sigfillset(&mask);
+  // // sigaddset(&mask_sigchld, SIGCHLD);
+  sigprocmask(SIG_BLOCK, &mask_one, &prev_one);
+  pid_t pid = fork();
   if (pid == 0)
   {
-    // do child stuff
+    sigprocmask(SIG_SETMASK, &prev_one, NULL);
     setpgid(pid, pid);
     // printf("EXECV %s", args[0]);
     execv(args[0], args);
-    exit(EXIT_SUCCESS);
   }
   if (pid > 0)
   {
+    sigprocmask(SIG_BLOCK, &mask_all, NULL);
     int jid = jobStack->head != NULL ? jobStack->head->element->jid + 1 : 1;
     Process *process = malloc(sizeof(Process));
     process->jid = jid;
@@ -168,36 +183,50 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     else
     {
       tcsetpgrp(STDIN_FILENO, pid);
-      // foregroundPID = pid;
-      do
+      sigprocmask(SIG_SETMASK, &prev_one, NULL);
+      int sig;
+      int *sigptr = &sig;
+      while (1)
       {
-        pid = wait(&status);
-        if (pid == -1)
+        int ret_val = sigwait(&mask_one, sigptr);
+        printf("%d\n", ret_val);
+        if (*sigptr == SIGCHLD)
         {
-          perror("waitpid");
-          exit(EXIT_FAILURE);
+          tcsetpgrp(STDIN_FILENO, shell_pid);
+          pid = waitpid(pid, &status, 0);
+          Process *process = removeElem(jobStack, jid);
+          freeProcess(process);
+          break;
         }
+      }
 
-        if (WIFEXITED(status))
-        {
-          printf("exited, status=%d\n", WEXITSTATUS(status));
-        }
-        else if (WIFSIGNALED(status))
-        {
-          printf("killed by signal %d\n", WTERMSIG(status));
-        }
-        else if (WIFSTOPPED(status))
-        {
-          printf("stopped by signal %d\n", WSTOPSIG(status));
-        }
-        else if (WIFCONTINUED(status))
-        {
-          printf("continued\n");
-        }
-      } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-      tcsetpgrp(STDIN_FILENO, shell_pid);
-      Process *process = removeElem(jobStack, jid);
-      freeProcess(process);
+      // foregroundPID = pid;
+      // do
+      // {
+      //   pid = wait(&status);
+      //   if (pid == -1)
+      //   {
+      //     perror("waitpid");
+      //     exit(EXIT_FAILURE);
+      //   }
+
+      //   if (WIFEXITED(status))
+      //   {
+      //     printf("exited, status=%d\n", WEXITSTATUS(status));
+      //   }
+      //   else if (WIFSIGNALED(status))
+      //   {
+      //     printf("killed by signal %d\n", WTERMSIG(status));
+      //   }
+      //   else if (WIFSTOPPED(status))
+      //   {
+      //     printf("stopped by signal %d\n", WSTOPSIG(status));
+      //   }
+      //   else if (WIFCONTINUED(status))
+      //   {
+      //     printf("continued\n");
+      //   }
+      // } while (!WIFEXITED(status) && !WIFSIGNALED(status));
       // foregroundPID = -1;
       if (WIFSIGNALED(status))
       {
