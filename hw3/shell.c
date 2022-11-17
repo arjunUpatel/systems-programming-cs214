@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <unistd.h>
 #include "parser.h"
 #include "stack.h"
 #include "process.h"
@@ -27,6 +28,8 @@ void handleSigtstp(int signum)
 
 int main()
 {
+  pid_t shell_pid = getpid();
+  tcsetpgrp(STDIN_FILENO, shell_pid);
   // Process **jobs = calloc(5, sizeof(Process *));
   Stack *jobStack = malloc(sizeof(Stack));
   jobStack->head = NULL;
@@ -89,7 +92,7 @@ int main()
     // printf("input: %s\n", buf);
 
     InputParse *parsedInput = parseInput(buf);
-    createProcess(parsedInput, jobStack);
+    createProcess(parsedInput, jobStack, shell_pid);
 
     // printParsedInput(parsedInput);
     // freeInputParse(parsedInput);

@@ -14,10 +14,6 @@
 
 extern pid_t foregroundPID;
 
-// void createJob(Process **jobs, int numJobs, Process *process)
-// {
-// }
-
 char *statusToString(int status)
 {
   switch (status)
@@ -87,7 +83,7 @@ void freeProcess(Process *process)
   free(process);
 }
 
-void createProcess(InputParse *inputParse, Stack *jobStack)
+void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
 {
   char *pathname;
   if (isCommand(inputParse->parsedInput[0]))
@@ -152,7 +148,8 @@ void createProcess(InputParse *inputParse, Stack *jobStack)
   if (pid == 0)
   {
     // do child stuff
-    printf("EXECV %s", args[0]);
+    setpgid(pid, pid);
+    // printf("EXECV %s", args[0]);
     execv(args[0], args);
     exit(EXIT_SUCCESS);
   }
@@ -170,50 +167,49 @@ void createProcess(InputParse *inputParse, Stack *jobStack)
       printf("[%d] %d\n", process->jid, pid);
     else
     {
-      foregroundPID = pid;
-      pid = waitpid(pid, &status, WUNTRACED);
-      Process *process = pop(jobStack);
+      tcsetpgrp(STDIN_FILENO, pid);
+      // foregroundPID = pid;
+      do
+      {
+        pid = wait(&status);
+        if (pid == -1)
+        {
+          perror("waitpid");
+          exit(EXIT_FAILURE);
+        }
+
+        if (WIFEXITED(status))
+        {
+          printf("exited, status=%d\n", WEXITSTATUS(status));
+        }
+        else if (WIFSIGNALED(status))
+        {
+          printf("killed by signal %d\n", WTERMSIG(status));
+        }
+        else if (WIFSTOPPED(status))
+        {
+          printf("stopped by signal %d\n", WSTOPSIG(status));
+        }
+        else if (WIFCONTINUED(status))
+        {
+          printf("continued\n");
+        }
+      } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+      tcsetpgrp(STDIN_FILENO, shell_pid);
+      Process *process = removeElem(jobStack, jid);
       freeProcess(process);
-      free(pathname);
-      free(args);
-      foregroundPID = -1;
+      // foregroundPID = -1;
       if (WIFSIGNALED(status))
       {
         printf("\n[%d] %d terminated by signal %d\n", 0, pid, WTERMSIG(status));
       }
-      // do
-      // {
-      //   w = wait(&status);
-      //   if (w == -1)
-      //   {
-      //     perror("waitpid");
-      //     exit(EXIT_FAILURE);
-      //   }
-
-      //   if (WIFEXITED(status))
-      //   {
-      //     printf("exited, status=%d\n", WEXITSTATUS(status));
-      //   }
-      //   else if (WIFSIGNALED(status))
-      //   {
-      //     printf("killed by signal %d\n", WTERMSIG(status));
-      //   }
-      //   else if (WIFSTOPPED(status))
-      //   {
-      //     printf("stopped by signal %d\n", WSTOPSIG(status));
-      //   }
-      //   else if (WIFCONTINUED(status))
-      //   {
-      //     printf("continued\n");
-      //   }
-      // } while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
   }
   else
   {
     // error while creating child
     perror("fork");
-    free(pathname);
-    free(args);
   }
+  free(pathname);
+  free(args);
 }

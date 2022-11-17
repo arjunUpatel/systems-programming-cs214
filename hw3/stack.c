@@ -16,17 +16,21 @@ Process *pop(Stack *stack)
 Process *removeElem(Stack *stack, int jid)
 {
     ListNode *prevNode = NULL;
-    while (stack->head != NULL)
+    ListNode *currNode = stack->head;
+    while (currNode != NULL)
     {
-        if (stack->head->element->jid == jid)
+        if (currNode->element->jid == jid)
         {
-            prevNode->next = stack->head->next;
-            Process *res = stack->head->element;
-            free(stack->head);
+            if (prevNode != NULL)
+                prevNode->next = currNode->next;
+            else
+                stack->head = currNode->next;
+            Process *res = currNode->element;
+            free(currNode);
             return res;
         }
-        prevNode = stack->head;
-        stack->head = stack->head->next;
+        prevNode = currNode;
+        currNode = currNode->next;
     }
     return NULL;
 }
@@ -38,12 +42,6 @@ void push(Stack *stack, Process *process)
     newNode->next = stack->head;
     stack->head = newNode;
 }
-
-// void put(Stack *stack, Process *process, int jid)
-// {
-
-//    while() 
-// }
 
 void printStack(Stack *stack)
 {
