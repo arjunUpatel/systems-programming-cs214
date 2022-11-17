@@ -12,7 +12,7 @@
 #include "process.h"
 #include "parser.h"
 
-extern pid_t foregroundPID;
+// extern pid_t foregroundPID;
 
 // bool f_sigchld = false;
 
@@ -43,11 +43,11 @@ void printJob(Process *process)
     printf("%s ", process->inputParse->parsedInput[i]);
 }
 
-void printJobs(Process **jobs, int numJobs)
-{
-  for (int i = 0; i < numJobs; i++)
-    printJob(jobs[i]);
-}
+// void printJobs(Stack **jobs, int numJobs)
+// {
+//   for (int i = 0; i < numJobs; i++)
+//     printJob(jobs[i]);
+// }
 
 bool isDirectory(const char *path)
 {
@@ -73,15 +73,32 @@ bool isValidPath(char *arg)
   return true;
 }
 
-int isBuiltIn(char *arg)
+bool runBuiltIn(char *arg, Stack *jobStack)
 {
-  char *builtIns[6] = {"bg", "cd", "exit", "fg", "jobs", "kill"};
-  for (int i = 0; i < 6; i++)
+  if (strcmp(arg, "bg") == 0)
   {
-    if (strcmp(arg, builtIns[i]) == 0)
-      return i;
   }
-  return -1;
+  else if (strcmp(arg, "cd") == 0)
+  {
+  }
+  else if (strcmp(arg, "exit") == 0)
+  {
+  }
+  else if (strcmp(arg, "fg") == 0)
+  {
+  }
+  else if (strcmp(arg, "jobs") == 0)
+  {
+    printStack(jobStack);
+  }
+  else if (strcmp(arg, "kill") == 0)
+  {
+  }
+  else
+  {
+    return false;
+  }
+  return true;
 }
 
 void freeProcess(Process *process)
@@ -97,11 +114,10 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   if (isCommand(inputParse->parsedInput[0]))
   {
     // check if it is built in
-    int builtInFuncIdx = isBuiltIn(inputParse->parsedInput[0]);
-    if (builtInFuncIdx != -1)
+    // returns true if it is built in command, false otherwise
+    if (runBuiltIn(inputParse->parsedInput[0], jobStack) == true)
     {
-      // do built in stuff
-      // possibly make an array of function pointers and map to the correspoing built in function's function and then return
+      return;
     }
     else
     {
@@ -182,8 +198,13 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
       printf("[%d] %d\n", process->jid, pid);
     else
     {
+
       tcsetpgrp(STDIN_FILENO, pid);
-      sigprocmask(SIG_SETMASK, &prev_one, NULL);
+      sigset_t s;
+      sigemptyset(&s);
+      sigaddset(&s, SIGCHLD);
+      sigaddset(&s, SIGTTOU);
+      sigprocmask(SIG_SETMASK, &s, NULL);
       int sig;
       int *sigptr = &sig;
       while (1)

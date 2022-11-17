@@ -24,7 +24,7 @@
 //   }
 // }
 
-pid_t foregroundPID = -1;
+// pid_t foregroundPID = -1;
 
 int main()
 {
