@@ -54,7 +54,6 @@ void updateJobStatus(Process *process)
       }
       else if (WIFCONTINUED(wstatus))
       {
-        printf("dasdas\n");
         process->status = 0;
       }
       flag = true;
@@ -242,6 +241,21 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
       }
       else if (builtInFuncIdx == 3)
       {
+        // add invalid input checks
+        char *arg;
+        int jid = -1;
+        for (int i = 1; (arg = inputParse->parsedInput[i]) != NULL; i++)
+        {
+          if (arg[0] != '%')
+          {
+            printf("invalid input\n");
+            break;
+          }
+          jid = atoi(arg + 1);
+          Process *p = getElem(jobStack, jid);
+          putProcessInBackground(p);
+          putProcessInForeground(jobStack, p, shell_pid);
+        }
       }
       else if (builtInFuncIdx == 4)
       {
@@ -318,6 +332,13 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     free(args);
     updateJobs(jobStack);
     Process *process = addJob(jobStack, pid, inputParse);
+    sigset_t s;
+    sigemptyset(&s);
+    sigaddset(&s, SIGTTOU);
+    // sigaddset(&s, SIGINT);
+    // sigaddset(&s, SIGCONT);
+    // sigaddset(&s, SIGTSTP);
+    sigprocmask(SIG_SETMASK, &s, NULL);
     if (inputParse->ampersandPresent)
     {
       printf("[%d] %d\n", process->jid, pid);
@@ -325,13 +346,6 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     }
     else
     {
-      sigset_t s;
-      sigemptyset(&s);
-      sigaddset(&s, SIGTTOU);
-      // sigaddset(&s, SIGINT);
-      // sigaddset(&s, SIGCONT);
-      // sigaddset(&s, SIGTSTP);
-      sigprocmask(SIG_SETMASK, &s, NULL);
       putProcessInForeground(jobStack, process, shell_pid);
     }
   }
