@@ -182,12 +182,11 @@ void killJob(char **parsedInput, Stack *jobStack)
     char *jidStr = parsedInput[1] + 1;
     int jid = strtol(jidStr, NULL, 10);
     Process *process = getElem(jobStack, jid);
-    printf("PROCESS %d", process->jid);
     if (process != NULL)
     {
-      // BUG: Only works once
       kill(process->pid, SIGTERM);
       waitpid(process->pid, NULL, 0);
+      removeElem(jobStack, process->jid);
     }
   }
 }
@@ -207,11 +206,9 @@ void exitShell(InputParse *inputParse, Stack *jobStack)
     }
     process = pop(jobStack);
   }
-  printf("Exit shell\n");
-  freeStack(jobStack);
   freeInputParse(inputParse);
+  freeStack(jobStack);
   exit(0);
-  // BUG: Memory leak
 }
 
 // void printJobs(Stack **jobs, int numJobs)
@@ -290,6 +287,7 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     // returns true if it is built in command, false otherwise
     if (runBuiltIn(inputParse, jobStack) == true)
     {
+      freeInputParse(inputParse);
       return;
     }
     else
@@ -360,6 +358,10 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     Process *process = addJob(jobStack, pid, inputParse);
     if (inputParse->ampersandPresent)
     {
+      // Unblock SIGTERM for kill to work
+      sigset_t s;
+      sigemptyset(&s);
+      sigprocmask(SIG_SETMASK, &s, NULL);
       printf("[%d] %d\n", process->jid, pid);
       putProcessInBackground(process);
     }

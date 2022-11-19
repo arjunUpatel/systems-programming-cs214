@@ -89,7 +89,7 @@ int main()
       buf[i] = bufTemp[i];
     free(bufTemp);
     InputParse *parsedInput = parseInput(buf);
-    if(parsedInput != NULL)
+    if (parsedInput != NULL)
       createProcess(parsedInput, jobStack, shell_pid);
     free(buf);
   }

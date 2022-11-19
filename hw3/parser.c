@@ -8,7 +8,7 @@
 
 InputParse *parseInput(char *input)
 {
-  if(strlen(input) == 0)
+  if (strlen(input) == 0)
     return NULL;
   unsigned long long len = 1;
   unsigned long long idx = 0;
@@ -30,12 +30,13 @@ InputParse *parseInput(char *input)
       strIdx++;
       if (strIdx == strLen)
       {
-        char *temp = malloc(2 * strLen * sizeof(char));
-        for (unsigned long long k = 0; k < strLen; k++)
-          temp[k] = strTemp[k];
-        free(strTemp);
-        strTemp = temp;
+        // char *temp = malloc(2 * strLen * sizeof(char));
+        // for (unsigned long long k = 0; k < strLen; k++)
+        //   temp[k] = strTemp[k];
+        // free(strTemp);
+        // strTemp = temp;
         strLen *= 2;
+        strTemp = realloc(strTemp, strLen * sizeof(char));
       }
       j++;
     }
@@ -49,12 +50,14 @@ InputParse *parseInput(char *input)
     idx++;
     if (idx == len)
     {
-      char **temp = malloc(2 * len * sizeof(char *));
-      for (unsigned long long l = 0; l < idx; l++)
-        temp[l] = parsedInputTemp[l];
-      free(parsedInputTemp);
-      parsedInputTemp = temp;
+      // char **temp = malloc(2 * len * sizeof(char *));
+      // for (unsigned long long l = 0; l < idx; l++)
+      //   temp[l] = parsedInputTemp[l];
+      // free(parsedInputTemp);
+      // parsedInputTemp = temp;
+      // len *= 2;
       len *= 2;
+      parsedInputTemp = realloc(parsedInputTemp, len * sizeof(char *));
     }
     i = j;
   }
