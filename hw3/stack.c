@@ -4,65 +4,82 @@
 
 Process *pop(Stack *stack)
 {
-    if (stack->head == NULL)
-        return NULL;
-    Process *res = stack->head->element;
-    ListNode *tempNode = stack->head;
-    stack->head = stack->head->next;
-    free(tempNode);
-    return res;
+  if (stack->head == NULL)
+    return NULL;
+  Process *res = stack->head->element;
+  ListNode *tempNode = stack->head;
+  stack->head = stack->head->next;
+  free(tempNode);
+  return res;
+}
+
+Process *getElem(Stack *stack, int jid)
+{
+  ListNode *currNode = stack->head;
+  while (currNode != NULL)
+  {
+    if (currNode->element->jid == jid)
+    {
+      return currNode->element;
+    }
+  }
+  return NULL;
 }
 
 Process *removeElem(Stack *stack, int jid)
 {
-    ListNode *prevNode = NULL;
-    ListNode *currNode = stack->head;
-    while (currNode != NULL)
+  ListNode *prevNode = NULL;
+  ListNode *currNode = stack->head;
+  while (currNode != NULL)
+  {
+    if (currNode->element->jid == jid)
     {
-        if (currNode->element->jid == jid)
-        {
-            if (prevNode != NULL)
-                prevNode->next = currNode->next;
-            else
-                stack->head = currNode->next;
-            Process *res = currNode->element;
-            free(currNode);
-            return res;
-        }
-        prevNode = currNode;
-        currNode = currNode->next;
+      if (prevNode != NULL)
+        prevNode->next = currNode->next;
+      else
+        stack->head = currNode->next;
+      Process *res = currNode->element;
+      free(currNode);
+      return res;
     }
-    return NULL;
+    prevNode = currNode;
+    currNode = currNode->next;
+  }
+  return NULL;
 }
 
 void push(Stack *stack, Process *process)
 {
-    ListNode *newNode = malloc(sizeof(ListNode));
-    newNode->element = process;
-    newNode->next = stack->head;
-    stack->head = newNode;
+  ListNode *newNode = malloc(sizeof(ListNode));
+  newNode->element = process;
+  newNode->next = stack->head;
+  stack->head = newNode;
 }
 
 void printStack(Stack *stack)
 {
-    Stack tempStack;
-    tempStack.head = NULL;
-    while (stack->head != NULL)
-    {
-        push(&tempStack, stack->head->element);
-        stack->head = stack->head->next;
-    }
+  ListNode *stackHead = stack->head;
 
-    while (tempStack.head != NULL)
-        printJob(pop(&tempStack));
+  Stack tempStack;
+  tempStack.head = NULL;
+  while (stack->head != NULL)
+  {
+    push(&tempStack, stack->head->element);
+    stack->head = stack->head->next;
+  }
+
+  while (tempStack.head != NULL)
+    printJob(pop(&tempStack));
+
+  stack->head = stackHead;
 }
 
 void freeStack(Stack *stack)
 {
-    while (stack->head != NULL)
-    {
-        Process *p = pop(stack);
-        freeProcess(p);
-    }
-    free(stack);
+  while (stack->head != NULL)
+  {
+    Process *p = pop(stack);
+    freeProcess(p);
+  }
+  free(stack);
 }

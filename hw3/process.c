@@ -41,6 +41,47 @@ void printJob(Process *process)
   printf("[%d] %d %s ", process->jid, process->pid, statusToString(process->status));
   for (int i = 0; process->inputParse->parsedInput[i] != NULL; i++)
     printf("%s ", process->inputParse->parsedInput[i]);
+  if (process->inputParse->ampersandPresent)
+    printf("&");
+  printf("\n");
+}
+
+void killJob(char **parsedInput, Stack *jobStack)
+{
+  if (parsedInput[1] != NULL && parsedInput[1][0] == '%')
+  {
+    char *jidStr = parsedInput[1] + 1;
+    int jid = strtol(jidStr, NULL, 10);
+    Process *process = getElem(jobStack, jid);
+    if (process != NULL)
+    {
+      // BUG: Only works once
+      kill(process->pid, SIGTERM);
+      waitpid(process->pid, NULL, 0);
+    }
+  }
+}
+
+void exitShell(InputParse *inputParse, Stack *jobStack)
+{
+  Process *process = pop(jobStack);
+  while (process != NULL)
+  {
+    if (process->status == 0 || process->status == 1)
+    {
+      kill(process->pid, SIGHUP);
+    }
+    if (process->status == 1)
+    {
+      kill(process->pid, SIGCONT);
+    }
+    process = pop(jobStack);
+  }
+  printf("Exit shell\n");
+  freeStack(jobStack);
+  freeInputParse(inputParse);
+  exit(0);
+  // TODO: Actually exit the shell
 }
 
 // void printJobs(Stack **jobs, int numJobs)
@@ -73,26 +114,28 @@ bool isValidPath(char *arg)
   return true;
 }
 
-bool runBuiltIn(char *arg, Stack *jobStack)
+bool runBuiltIn(InputParse *inputParse, Stack *jobStack)
 {
-  if (strcmp(arg, "bg") == 0)
+  if (strcmp(inputParse->parsedInput[0], "bg") == 0)
   {
   }
-  else if (strcmp(arg, "cd") == 0)
+  else if (strcmp(inputParse->parsedInput[0], "cd") == 0)
   {
   }
-  else if (strcmp(arg, "exit") == 0)
+  else if (strcmp(inputParse->parsedInput[0], "exit") == 0)
+  {
+    exitShell(inputParse, jobStack);
+  }
+  else if (strcmp(inputParse->parsedInput[0], "fg") == 0)
   {
   }
-  else if (strcmp(arg, "fg") == 0)
-  {
-  }
-  else if (strcmp(arg, "jobs") == 0)
+  else if (strcmp(inputParse->parsedInput[0], "jobs") == 0)
   {
     printStack(jobStack);
   }
-  else if (strcmp(arg, "kill") == 0)
+  else if (strcmp(inputParse->parsedInput[0], "kill") == 0)
   {
+    killJob(inputParse->parsedInput, jobStack);
   }
   else
   {
@@ -115,7 +158,7 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   {
     // check if it is built in
     // returns true if it is built in command, false otherwise
-    if (runBuiltIn(inputParse->parsedInput[0], jobStack) == true)
+    if (runBuiltIn(inputParse, jobStack) == true)
     {
       return;
     }
@@ -198,7 +241,6 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
       printf("[%d] %d\n", process->jid, pid);
     else
     {
-
       tcsetpgrp(STDIN_FILENO, pid);
       sigset_t s;
       sigemptyset(&s);
