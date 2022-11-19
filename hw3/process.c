@@ -54,6 +54,7 @@ void updateJobStatus(Process *process)
       }
       else if (WIFCONTINUED(wstatus))
       {
+        printf("dasdas\n");
         process->status = 0;
       }
       flag = true;
@@ -61,7 +62,6 @@ void updateJobStatus(Process *process)
   } while (!flag);
 }
 
-// bug here
 void updateJobs(Stack *jobStack)
 {
   ListNode *prevNode = NULL;
@@ -116,7 +116,7 @@ void putProcessInForeground(Stack *jobStack, Process *process, pid_t shell_pid)
     }
     else if (WIFSTOPPED(wstatus))
     {
-      // killpg(process->pid, SIGTSTP);
+      printf("\n");
       process->status = 1;
       flag = true;
     }
@@ -224,7 +224,26 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     int builtInFuncIdx = isBuiltIn(inputParse->parsedInput[0]);
     if (builtInFuncIdx != -1)
     {
-      if (builtInFuncIdx == 4)
+      if (builtInFuncIdx == 0)
+      {
+        // add invalid input checks
+        char *arg;
+        int jid = -1;
+        for (int i = 1; (arg = inputParse->parsedInput[i]) != NULL; i++)
+        {
+          if (arg[0] != '%')
+          {
+            printf("invalid input\n");
+            break;
+          }
+          jid = atoi(arg + 1);
+          putProcessInBackground(getElem(jobStack, jid));
+        }
+      }
+      else if (builtInFuncIdx == 3)
+      {
+      }
+      else if (builtInFuncIdx == 4)
       {
         updateJobs(jobStack);
         printStack(jobStack);
@@ -297,6 +316,7 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     free(pathname);
     free(args);
+    updateJobs(jobStack);
     Process *process = addJob(jobStack, pid, inputParse);
     if (inputParse->ampersandPresent)
     {
