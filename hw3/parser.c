@@ -8,6 +8,8 @@
 
 InputParse *parseInput(char *input)
 {
+  if(strlen(input) == 0)
+    return NULL;
   unsigned long long len = 1;
   unsigned long long idx = 0;
   char **parsedInputTemp = malloc(len * sizeof(char *));

@@ -48,6 +48,18 @@ Process *removeElem(Stack *stack, int jid)
   return NULL;
 }
 
+Process *getElem(Stack *stack, int jid)
+{
+  ListNode *currNode = stack->head;
+  while (currNode != NULL)
+  {
+    if (currNode->element->jid == jid)
+      return currNode->element;
+    currNode = currNode->next;
+  }
+  return NULL;
+}
+
 void push(Stack *stack, Process *process)
 {
   ListNode *newNode = malloc(sizeof(ListNode));

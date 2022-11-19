@@ -88,14 +88,9 @@ int main()
     for (int i = 0; i < idx; i++)
       buf[i] = bufTemp[i];
     free(bufTemp);
-
-    // printf("input: %s\n", buf);
-
     InputParse *parsedInput = parseInput(buf);
-    createProcess(parsedInput, jobStack, shell_pid);
-
-    // printParsedInput(parsedInput);
-    // freeInputParse(parsedInput);
+    if(parsedInput != NULL)
+      createProcess(parsedInput, jobStack, shell_pid);
     free(buf);
   }
   freeStack(jobStack);
