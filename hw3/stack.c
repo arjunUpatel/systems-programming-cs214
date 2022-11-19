@@ -13,19 +13,6 @@ Process *pop(Stack *stack)
   return res;
 }
 
-Process *getElem(Stack *stack, int jid)
-{
-  ListNode *currNode = stack->head;
-  while (currNode != NULL)
-  {
-    if (currNode->element->jid == jid)
-    {
-      return currNode->element;
-    }
-  }
-  return NULL;
-}
-
 Process *removeElem(Stack *stack, int jid)
 {
   ListNode *prevNode = NULL;

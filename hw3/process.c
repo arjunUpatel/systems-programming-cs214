@@ -182,6 +182,7 @@ void killJob(char **parsedInput, Stack *jobStack)
     char *jidStr = parsedInput[1] + 1;
     int jid = strtol(jidStr, NULL, 10);
     Process *process = getElem(jobStack, jid);
+    printf("PROCESS %d", process->jid);
     if (process != NULL)
     {
       // BUG: Only works once
@@ -210,7 +211,7 @@ void exitShell(InputParse *inputParse, Stack *jobStack)
   freeStack(jobStack);
   freeInputParse(inputParse);
   exit(0);
-  // TODO: Actually exit the shell
+  // BUG: Memory leak
 }
 
 // void printJobs(Stack **jobs, int numJobs)
