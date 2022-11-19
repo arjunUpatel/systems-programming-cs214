@@ -35,6 +35,18 @@ Process *removeElem(Stack *stack, int jid)
     return NULL;
 }
 
+Process *getElem(Stack *stack, int jid)
+{
+    ListNode *currNode = stack->head;
+    while (currNode != NULL)
+    {
+        if (currNode->element->jid == jid)
+            return currNode->element;
+        currNode = currNode->next;
+    }
+    return NULL;
+}
+
 void push(Stack *stack, Process *process)
 {
     ListNode *newNode = malloc(sizeof(ListNode));
@@ -46,11 +58,12 @@ void push(Stack *stack, Process *process)
 void printStack(Stack *stack)
 {
     Stack tempStack;
+    ListNode *node = stack->head;
     tempStack.head = NULL;
-    while (stack->head != NULL)
+    while (node != NULL)
     {
-        push(&tempStack, stack->head->element);
-        stack->head = stack->head->next;
+        push(&tempStack, node->element);
+        node = node->next;
     }
 
     while (tempStack.head != NULL)

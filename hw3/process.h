@@ -10,7 +10,7 @@ typedef struct Process
 {
   int jid;
   pid_t pid;
-  // 0 = running, 1 = stopped, 2 = terminated
+  // 0 = running, 1 = stopped, 2 = terminated, 3 = Done
   int status;
   InputParse *inputParse;
 } Process;

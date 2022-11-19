@@ -17,6 +17,7 @@ typedef struct Stack
 
 Process *pop(Stack *stack);
 Process *removeElem(Stack *stack, int jid);
+Process *getElem(Stack *stack, int jid);
 void push(Stack *stack, Process *process);
 void printStack(Stack *stack);
 void freeStack(Stack *stack);
