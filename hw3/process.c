@@ -361,7 +361,8 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
       // Unblock SIGTERM for kill to work
       sigset_t s;
       sigemptyset(&s);
-      sigprocmask(SIG_SETMASK, &s, NULL);
+      sigaddset(&s, SIGTERM);
+      sigprocmask(SIG_UNBLOCK, &s, NULL);
       printf("[%d] %d\n", process->jid, pid);
       putProcessInBackground(process);
     }
