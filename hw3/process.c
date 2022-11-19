@@ -185,7 +185,7 @@ void killJob(char **parsedInput, Stack *jobStack)
     if (process != NULL)
     {
       kill(process->pid, SIGTERM);
-      waitpid(process->pid, NULL, 0);
+      waitpid(process->pid, NULL, WNOHANG);
       removeElem(jobStack, process->jid);
     }
   }
