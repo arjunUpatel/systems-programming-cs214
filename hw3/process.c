@@ -12,6 +12,10 @@
 #include "process.h"
 #include "parser.h"
 
+// BUG: Bg jobs that end do not change status
+// BUG: Ctrl-c exits shell
+// TODO: Change kill to killpg
+
 void putProcessInBackground(Process *process)
 {
   if (process->status == 1)
@@ -22,6 +26,7 @@ void putProcessInBackground(Process *process)
       return;
     }
     process->status = 0;
+    process->inputParse->ampersandPresent = true;
   }
 }
 
@@ -30,6 +35,8 @@ void updateJobStatus(Process *process)
   int wstatus;
   pid_t pid = 0;
   bool flag = false;
+  process->inputParse->ampersandPresent = false;
+
   do
   {
     pid = waitpid(process->pid, &wstatus, WUNTRACED | WNOHANG);
@@ -61,7 +68,6 @@ void updateJobStatus(Process *process)
   } while (!flag);
 }
 
-// bug here
 void updateJobs(Stack *jobStack)
 {
   ListNode *prevNode = NULL;
@@ -116,7 +122,7 @@ void putProcessInForeground(Stack *jobStack, Process *process, pid_t shell_pid)
     }
     else if (WIFSTOPPED(wstatus))
     {
-      // killpg(process->pid, SIGTSTP);
+      printf("\n");
       process->status = 1;
       flag = true;
     }
@@ -175,19 +181,13 @@ void printJob(Process *process)
   printf("\n");
 }
 
-void killJob(char **parsedInput, Stack *jobStack)
+void killJob(Stack *jobStack, Process *process)
 {
-  if (parsedInput[1] != NULL && parsedInput[1][0] == '%')
+  if (process != NULL)
   {
-    char *jidStr = parsedInput[1] + 1;
-    int jid = strtol(jidStr, NULL, 10);
-    Process *process = getElem(jobStack, jid);
-    if (process != NULL)
-    {
-      kill(process->pid, SIGTERM);
-      waitpid(process->pid, NULL, WNOHANG);
-      removeElem(jobStack, process->jid);
-    }
+    kill(process->pid, SIGTERM);
+    waitpid(process->pid, NULL, WNOHANG);
+    removeElem(jobStack, process->jid);
   }
 }
 
@@ -241,10 +241,31 @@ bool isValidPath(char *arg)
   return true;
 }
 
-bool runBuiltIn(InputParse *inputParse, Stack *jobStack)
+bool runBuiltIn(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
 {
   if (strcmp(inputParse->parsedInput[0], "bg") == 0)
   {
+    for (int i = 1; inputParse->parsedInput[i] != NULL; i++)
+    {
+      if (inputParse->parsedInput[i][0] == '%')
+      {
+        char *jidStr = inputParse->parsedInput[i] + 1;
+        int jid = strtol(jidStr, NULL, 10);
+        Process *process = getElem(jobStack, jid);
+        if (process == NULL)
+        {
+          printf("bg: (%d) - No such job\n", jid);
+        }
+        else
+        {
+          putProcessInBackground(process);
+        }
+      }
+      else
+      {
+        printf("bg: (%s) - Operation not permitted\n", inputParse->parsedInput[i]);
+      }
+    }
   }
   else if (strcmp(inputParse->parsedInput[0], "cd") == 0)
   {
@@ -255,6 +276,28 @@ bool runBuiltIn(InputParse *inputParse, Stack *jobStack)
   }
   else if (strcmp(inputParse->parsedInput[0], "fg") == 0)
   {
+    for (int i = 1; inputParse->parsedInput[i] != NULL; i++)
+    {
+      if (inputParse->parsedInput[i][0] == '%')
+      {
+        char *jidStr = inputParse->parsedInput[i] + 1;
+        int jid = strtol(jidStr, NULL, 10);
+        Process *process = getElem(jobStack, jid);
+        if (process == NULL)
+        {
+          printf("fg: (%d) - No such job\n", jid);
+        }
+        else
+        {
+          putProcessInBackground(process);
+          putProcessInForeground(jobStack, process, shell_pid);
+        }
+      }
+      else
+      {
+        printf("fg: (%s) - Operation not permitted\n", inputParse->parsedInput[i]);
+      }
+    }
   }
   else if (strcmp(inputParse->parsedInput[0], "jobs") == 0)
   {
@@ -262,7 +305,27 @@ bool runBuiltIn(InputParse *inputParse, Stack *jobStack)
   }
   else if (strcmp(inputParse->parsedInput[0], "kill") == 0)
   {
-    killJob(inputParse->parsedInput, jobStack);
+    for (int i = 1; inputParse->parsedInput[i] != NULL; i++)
+    {
+      if (inputParse->parsedInput[i][0] == '%')
+      {
+        char *jidStr = inputParse->parsedInput[i] + 1;
+        int jid = strtol(jidStr, NULL, 10);
+        Process *process = getElem(jobStack, jid);
+        if (process == NULL)
+        {
+          printf("kill: (%d) - No such job\n", jid);
+        }
+        else
+        {
+          killJob(jobStack, process);
+        }
+      }
+      else
+      {
+        printf("kill: (%s) - Operation not permitted\n", inputParse->parsedInput[i]);
+      }
+    }
   }
   else
   {
@@ -285,7 +348,7 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   {
     // check if it is built in
     // returns true if it is built in command, false otherwise
-    if (runBuiltIn(inputParse, jobStack) == true)
+    if (runBuiltIn(inputParse, jobStack, shell_pid) == true)
     {
       freeInputParse(inputParse);
       return;
@@ -355,7 +418,15 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     free(pathname);
     free(args);
+    updateJobs(jobStack);
     Process *process = addJob(jobStack, pid, inputParse);
+    sigset_t s;
+    sigemptyset(&s);
+    sigaddset(&s, SIGTTOU);
+    // sigaddset(&s, SIGINT);
+    // sigaddset(&s, SIGCONT);
+    // sigaddset(&s, SIGTSTP);
+    sigprocmask(SIG_SETMASK, &s, NULL);
     if (inputParse->ampersandPresent)
     {
       // Unblock SIGTERM for kill to work
@@ -368,13 +439,6 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     }
     else
     {
-      sigset_t s;
-      sigemptyset(&s);
-      sigaddset(&s, SIGTTOU);
-      // sigaddset(&s, SIGINT);
-      // sigaddset(&s, SIGCONT);
-      // sigaddset(&s, SIGTSTP);
-      sigprocmask(SIG_SETMASK, &s, NULL);
       putProcessInForeground(jobStack, process, shell_pid);
     }
   }

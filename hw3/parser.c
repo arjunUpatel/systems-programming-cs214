@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include "parser.h"
 
 // BUG: command ending in ctrl-c/ctrl-z causes memory leak
@@ -10,13 +11,14 @@ InputParse *parseInput(char *input)
 {
   if (strlen(input) == 0)
     return NULL;
+  bool allSpaces = true;
   unsigned long long len = 1;
   unsigned long long idx = 0;
   char **parsedInputTemp = malloc(len * sizeof(char *));
   unsigned long long inputLen = strlen(input);
   for (unsigned long long i = 0; i < inputLen; i++)
   {
-    if (input[i] == ' ')
+    if (isspace(input[i]))
       continue;
 
     unsigned long long strLen = 1;
@@ -26,6 +28,7 @@ InputParse *parseInput(char *input)
 
     while (j < inputLen && input[j] != ' ')
     {
+      allSpaces = false;
       strTemp[strIdx] = input[j];
       strIdx++;
       if (strIdx == strLen)
@@ -60,6 +63,11 @@ InputParse *parseInput(char *input)
       parsedInputTemp = realloc(parsedInputTemp, len * sizeof(char *));
     }
     i = j;
+  }
+  if (allSpaces)
+  {
+    free(parsedInputTemp);
+    return NULL;
   }
   bool ampersandPresent = false;
   if (parsedInputTemp[idx - 1][strlen(parsedInputTemp[idx - 1]) - 1] == '&')
