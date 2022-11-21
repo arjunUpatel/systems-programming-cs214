@@ -12,10 +12,6 @@
 #include "process.h"
 #include "parser.h"
 
-// BUG: Bg jobs that end do not change status
-// BUG: Ctrl-c exits shell
-// TODO: Change kill to killpg
-
 void putProcessInBackground(Process *process)
 {
   if (process->status == 1)
@@ -176,7 +172,7 @@ void printJob(Process *process)
   printf("[%d] %d %s ", process->jid, process->pid, statusToString(process->status));
   for (int i = 0; process->inputParse->parsedInput[i] != NULL; i++)
     printf("%s ", process->inputParse->parsedInput[i]);
-  if (process->inputParse->ampersandPresent)
+  if (process->status == 0)
     printf("&");
   printf("\n");
 }
@@ -185,7 +181,7 @@ void killJob(Stack *jobStack, Process *process)
 {
   if (process != NULL)
   {
-    kill(process->pid, SIGTERM);
+    killpg(process->pid, SIGTERM);
     waitpid(process->pid, NULL, WNOHANG);
     freeProcess(removeElem(jobStack, process->jid));
   }
@@ -343,12 +339,12 @@ void freeProcess(Process *process)
 
 void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
 {
-  // signal(SIGCHLD, handle_sigchld);
+  sigset_t mask_all, prev_all;
+  sigfillset(&mask_all);
+  sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
   char *pathname;
   if (isCommand(inputParse->parsedInput[0]))
   {
-    // check if it is built in
-    // returns true if it is built in command, false otherwise
     if (runBuiltIn(inputParse, jobStack, shell_pid) == true)
     {
       freeInputParse(inputParse);
@@ -401,40 +397,27 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   args[0] = pathname;
   for (int i = 1; i < inputParse->parseLen; i++)
     args[i] = inputParse->parsedInput[i];
-  // int status;
-  sigset_t mask_all, mask_one, prev_one, prev_all;
-  sigfillset(&mask_all);
-  sigemptyset(&mask_one);
-  sigaddset(&mask_one, SIGCHLD);
-  sigprocmask(SIG_BLOCK, &mask_one, &prev_one);
   pid_t pid = fork();
   if (pid == 0)
   {
-    sigprocmask(SIG_SETMASK, &prev_one, NULL);
+    signal(SIGINT, SIG_DFL);
+    sigprocmask(SIG_SETMASK, &prev_all, NULL);
     setpgid(pid, pid);
     execv(args[0], args);
   }
   if (pid > 0)
   {
-    sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     free(pathname);
     free(args);
     updateJobs(jobStack);
     Process *process = addJob(jobStack, pid, inputParse);
-    sigset_t s;
-    sigemptyset(&s);
-    sigaddset(&s, SIGTTOU);
-    // sigaddset(&s, SIGINT);
-    // sigaddset(&s, SIGCONT);
-    // sigaddset(&s, SIGTSTP);
-    sigprocmask(SIG_SETMASK, &s, NULL);
+    sigset_t mask_all_minus_sigint_sigtstp;
+    sigfillset(&mask_all_minus_sigint_sigtstp);
+    sigdelset(&mask_all_minus_sigint_sigtstp, SIGINT);
+    sigdelset(&mask_all_minus_sigint_sigtstp, SIGTSTP);
+    sigprocmask(SIG_SETMASK, &mask_all_minus_sigint_sigtstp, NULL);
     if (inputParse->ampersandPresent)
     {
-      // Unblock SIGTERM for kill to work
-      sigset_t s;
-      sigemptyset(&s);
-      sigaddset(&s, SIGTERM);
-      sigprocmask(SIG_UNBLOCK, &s, NULL);
       printf("[%d] %d\n", process->jid, pid);
       putProcessInBackground(process);
     }
@@ -444,5 +427,8 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     }
   }
   else
+  {
     perror("fork");
+    exit(0);
+  }
 }
