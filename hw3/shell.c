@@ -6,38 +6,22 @@
 #include "stack.h"
 #include "process.h"
 
-// void handleSigint(int signum)
-// {
-//   if (foregroundPID > -1)
-//   {
-//     kill(foregroundPID, SIGINT);
-//     foregroundPID = -1;
-//   }
-// }
-
-// void handleSigtstp(int signum)
-// {
-//   if (foregroundPID > -1)
-//   {
-//     kill(foregroundPID, SIGTSTP);
-//     foregroundPID = -1;
-//   }
-// }
-
-// pid_t foregroundPID = -1;
+void handle_sigint(int signum)
+{
+  write(STDOUT_FILENO, "\n> ", 3);
+}
 
 int main()
 {
+  signal(SIGINT, handle_sigint);
+  sigset_t mask_sigtstp;
+  sigemptyset(&mask_sigtstp);
+  sigaddset(&mask_sigtstp, SIGTSTP);
+  sigprocmask(SIG_BLOCK, &mask_sigtstp, NULL);
   pid_t shell_pid = getpid();
   tcsetpgrp(STDIN_FILENO, shell_pid);
-  // Process **jobs = calloc(5, sizeof(Process *));
   Stack *jobStack = malloc(sizeof(Stack));
   jobStack->head = NULL;
-
-  // int numJobs = 0;
-
-  // signal(SIGINT, handleSigint);
-  // signal(SIGTSTP, handleSigtstp);
 
   while (1)
   {
@@ -55,10 +39,6 @@ int main()
         breakpt = true;
         break;
       }
-      // else if(scanf("%c", &c) == ETX)
-      // {
-      // handle ctrl + c placeholder
-      // }
       if (c == '\n')
       {
         bufTemp[idx] = '\0';
