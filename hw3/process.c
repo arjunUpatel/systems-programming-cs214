@@ -15,6 +15,7 @@
 // BUG: Bg jobs that end do not change status
 // BUG: Ctrl-c exits shell
 // TODO: Change kill to killpg
+// TODO: Print terminated messages
 
 void putProcessInBackground(Process *process)
 {
