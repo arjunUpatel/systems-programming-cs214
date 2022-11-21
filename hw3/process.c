@@ -187,7 +187,7 @@ void killJob(Stack *jobStack, Process *process)
   {
     kill(process->pid, SIGTERM);
     waitpid(process->pid, NULL, WNOHANG);
-    removeElem(jobStack, process->jid);
+    freeProcess(removeElem(jobStack, process->jid));
   }
 }
 
@@ -198,11 +198,11 @@ void exitShell(InputParse *inputParse, Stack *jobStack)
   {
     if (process->status == 0 || process->status == 1)
     {
-      kill(process->pid, SIGHUP);
+      killpg(process->pid, SIGHUP);
     }
     if (process->status == 1)
     {
-      kill(process->pid, SIGCONT);
+      killpg(process->pid, SIGCONT);
     }
     process = pop(jobStack);
   }
@@ -301,6 +301,7 @@ bool runBuiltIn(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   }
   else if (strcmp(inputParse->parsedInput[0], "jobs") == 0)
   {
+    updateJobs(jobStack);
     printStack(jobStack);
   }
   else if (strcmp(inputParse->parsedInput[0], "kill") == 0)
