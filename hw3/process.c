@@ -345,7 +345,9 @@ void freeProcess(Process *process)
 void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
 {
   sigset_t mask_all, prev_all;
-  sigfillset(&mask_all);
+  // Changed from mask all to mask one
+  sigemptyset(&mask_all);
+  sigaddset(&mask_all, SIGCHLD);
   sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
   char *pathname;
   if (isCommand(inputParse->parsedInput[0]))
@@ -416,11 +418,19 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     free(args);
     updateJobs(jobStack);
     Process *process = addJob(jobStack, pid, inputParse);
-    sigset_t mask_all_minus_sigint_sigtstp;
-    sigfillset(&mask_all_minus_sigint_sigtstp);
-    sigdelset(&mask_all_minus_sigint_sigtstp, SIGINT);
-    sigdelset(&mask_all_minus_sigint_sigtstp, SIGTSTP);
-    sigprocmask(SIG_SETMASK, &mask_all_minus_sigint_sigtstp, NULL);
+    sigset_t mask_all_minus_sigint_sigtstp_sigterm;
+    sigfillset(&mask_all_minus_sigint_sigtstp_sigterm);
+    // Added more signals to not block for kill and exit
+    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGINT);
+    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGTSTP);
+    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGTERM);
+    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGHUP);
+    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGCONT);
+    // sigset_t s;
+    // sigemptyset(&s);
+    // sigaddset(&s, SIGTERM);
+    // sigprocmask(SIG_UNBLOCK, &s, NULL);
+    sigprocmask(SIG_SETMASK, &mask_all_minus_sigint_sigtstp_sigterm, NULL);
     if (inputParse->ampersandPresent)
     {
       printf("[%d] %d\n", process->jid, pid);
