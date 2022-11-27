@@ -12,9 +12,6 @@
 #include "process.h"
 #include "parser.h"
 
-// BUG: Bg jobs that end do not change status
-// BUG: Ctrl-c exits shell
-// TODO: Change kill to killpg
 // TODO: Print terminated messages
 
 void putProcessInBackground(Process *process)
@@ -212,11 +209,27 @@ void exitShell(InputParse *inputParse, Stack *jobStack)
   exit(0);
 }
 
-// void printJobs(Stack **jobs, int numJobs)
-// {
-//   for (int i = 0; i < numJobs; i++)
-//     printJob(jobs[i]);
-// }
+void changeDirectory(InputParse *inputParse)
+{
+  if (inputParse->parsedInput[1] != NULL)
+  {
+    int err = chdir(inputParse->parsedInput[1]);
+    if (err == 0)
+    {
+      char *wd = getcwd(NULL, 0);
+      setenv("PWD", wd, 1);
+      free(wd);
+    }
+    else
+    {
+      printf("%s: Not a directory", inputParse->parsedInput[1]);
+    }
+  }
+  else
+  {
+    chdir(getenv("HOME"));
+  }
+}
 
 bool isDirectory(const char *path)
 {
@@ -270,6 +283,7 @@ bool runBuiltIn(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   }
   else if (strcmp(inputParse->parsedInput[0], "cd") == 0)
   {
+    changeDirectory(inputParse);
   }
   else if (strcmp(inputParse->parsedInput[0], "exit") == 0)
   {
