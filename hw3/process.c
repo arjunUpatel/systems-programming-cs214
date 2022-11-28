@@ -12,12 +12,7 @@
 #include "process.h"
 #include "parser.h"
 
-<<<<<<< HEAD
 // BUG: exit causes memory leaks
-// BUG: kill leaving zombie children
-=======
-// TODO: Print terminated messages
->>>>>>> path-mapper
 
 void putProcessInBackground(Process *process)
 {
@@ -210,8 +205,6 @@ void exitShell(InputParse *inputParse, Stack *jobStack)
   exit(0);
 }
 
-<<<<<<< HEAD
-=======
 void changeDirectory(InputParse *inputParse)
 {
   if (inputParse->parsedInput[1] != NULL)
@@ -234,7 +227,6 @@ void changeDirectory(InputParse *inputParse)
   }
 }
 
->>>>>>> path-mapper
 bool isDirectory(const char *path)
 {
   struct stat stats;
@@ -362,19 +354,11 @@ void freeProcess(Process *process)
 
 void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
 {
-<<<<<<< HEAD
   sigset_t mask_all, prev_all, mask_sigchld, prev_sigchld;
   sigemptyset(&mask_sigchld);
   sigaddset(&mask_sigchld, SIGCHLD);
   sigfillset(&mask_all);
   // sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
-=======
-  sigset_t mask_all, prev_all;
-  // Changed from mask all to mask one
-  sigemptyset(&mask_all);
-  sigaddset(&mask_all, SIGCHLD);
-  sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
->>>>>>> path-mapper
   char *pathname;
   if (isCommand(inputParse->parsedInput[0]))
   {
@@ -448,28 +432,11 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     free(args);
     updateJobs(jobStack);
     Process *process = addJob(jobStack, pid, inputParse);
-<<<<<<< HEAD
     sigset_t s;
     sigemptyset(&s);
     sigaddset(&s, SIGTTOU);
     sigprocmask(SIG_SETMASK, &mask_all, NULL);
-    sigprocmask(SIG_SETMASK, &s, NULL);
-
-=======
-    sigset_t mask_all_minus_sigint_sigtstp_sigterm;
-    sigfillset(&mask_all_minus_sigint_sigtstp_sigterm);
-    // Added more signals to not block for kill and exit
-    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGINT);
-    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGTSTP);
-    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGTERM);
-    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGHUP);
-    sigdelset(&mask_all_minus_sigint_sigtstp_sigterm, SIGCONT);
-    // sigset_t s;
-    // sigemptyset(&s);
-    // sigaddset(&s, SIGTERM);
-    // sigprocmask(SIG_UNBLOCK, &s, NULL);
-    sigprocmask(SIG_SETMASK, &mask_all_minus_sigint_sigtstp_sigterm, NULL);
->>>>>>> path-mapper
+    sigprocmask(SIG_SETMASK, &s, NULL); 
     if (inputParse->ampersandPresent)
     {
       printf("[%d] %d\n", process->jid, pid);
