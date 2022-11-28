@@ -12,7 +12,8 @@
 #include "process.h"
 #include "parser.h"
 
-//BUG: exit causes memory leaks
+// BUG: exit causes memory leaks
+// BUG: kill leaving zombie children
 
 void putProcessInBackground(Process *process)
 {
@@ -52,9 +53,7 @@ void updateJobStatus(Process *process)
       }
       else if (WIFSIGNALED(wstatus))
       {
-        int signum = WTERMSIG(wstatus);
-        if (signum == 2)
-          printf("[%d] bg signaled: [%d]\n", pid, signum);
+        printf("\n[%d] %d terminated by signal %d\n", process->jid, process->pid, WTERMSIG(wstatus));
         process->status = 2;
       }
       else if (WIFCONTINUED(wstatus))
@@ -131,11 +130,6 @@ void putProcessInForeground(Stack *jobStack, Process *process, pid_t shell_pid)
       freeProcess(process);
       flag = true;
     }
-    else if (WIFCONTINUED(wstatus))
-    {
-      printf("continued\n");
-      flag = true;
-    }
     // updateForegroundProcessStatus(jobStack, process, wstatus);
   } while (!flag);
   tcsetpgrp(STDIN_FILENO, shell_pid);
@@ -178,13 +172,17 @@ void printJob(Process *process)
   printf("\n");
 }
 
-void killJob(Stack *jobStack, Process *process)
+void killJob(Stack *jobStack, Process *process, pid_t shell_pid)
 {
   if (process != NULL)
   {
-    killpg(process->pid, SIGTERM);
-    waitpid(process->pid, NULL, WNOHANG);
-    freeProcess(removeElem(jobStack, process->jid));
+    if (killpg(process->pid, SIGTERM) < 0)
+    {
+      perror("killpg");
+      return;
+    }
+    putProcessInBackground(process);
+    putProcessInForeground(jobStack, process, shell_pid);
   }
 }
 
@@ -310,7 +308,7 @@ bool runBuiltIn(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
         }
         else
         {
-          killJob(jobStack, process);
+          killJob(jobStack, process, shell_pid);
         }
       }
       else
