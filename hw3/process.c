@@ -136,7 +136,6 @@ void putProcessInForeground(Stack *jobStack, Process *process, pid_t shell_pid)
     }
     // updateForegroundProcessStatus(jobStack, process, wstatus);
   } while (!flag);
-  // while (!mark_process_status(pid, status) && !job_is_stopped(j) && !job_is_completed(j));
   tcsetpgrp(STDIN_FILENO, shell_pid);
 }
 
@@ -206,12 +205,6 @@ void exitShell(InputParse *inputParse, Stack *jobStack)
   freeStack(jobStack);
   exit(0);
 }
-
-// void printJobs(Stack **jobs, int numJobs)
-// {
-//   for (int i = 0; i < numJobs; i++)
-//     printJob(jobs[i]);
-// }
 
 bool isDirectory(const char *path)
 {
@@ -339,9 +332,11 @@ void freeProcess(Process *process)
 
 void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
 {
-  sigset_t mask_all, prev_all;
+  sigset_t mask_all, prev_all, mask_sigchld, prev_sigchld;
+  sigemptyset(&mask_sigchld);
+  sigaddset(&mask_sigchld, SIGCHLD);
   sigfillset(&mask_all);
-  sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
+  // sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
   char *pathname;
   if (isCommand(inputParse->parsedInput[0]))
   {
@@ -397,25 +392,30 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   args[0] = pathname;
   for (int i = 1; i < inputParse->parseLen; i++)
     args[i] = inputParse->parsedInput[i];
+  // sigprocmask(SIG_SETMASK, &prev_all, NULL);
+  sigprocmask(SIG_BLOCK, &mask_sigchld, &prev_sigchld);
   pid_t pid = fork();
   if (pid == 0)
   {
     signal(SIGINT, SIG_DFL);
-    sigprocmask(SIG_SETMASK, &prev_all, NULL);
+    signal(SIGTSTP, SIG_DFL);
+    sigprocmask(SIG_SETMASK, &prev_sigchld, NULL);
     setpgid(pid, pid);
     execv(args[0], args);
   }
   if (pid > 0)
   {
+    sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
     free(pathname);
     free(args);
     updateJobs(jobStack);
     Process *process = addJob(jobStack, pid, inputParse);
-    sigset_t mask_all_minus_sigint_sigtstp;
-    sigfillset(&mask_all_minus_sigint_sigtstp);
-    sigdelset(&mask_all_minus_sigint_sigtstp, SIGINT);
-    sigdelset(&mask_all_minus_sigint_sigtstp, SIGTSTP);
-    sigprocmask(SIG_SETMASK, &mask_all_minus_sigint_sigtstp, NULL);
+    sigset_t s;
+    sigemptyset(&s);
+    sigaddset(&s, SIGTTOU);
+    sigprocmask(SIG_SETMASK, &mask_all, NULL);
+    sigprocmask(SIG_SETMASK, &s, NULL);
+
     if (inputParse->ampersandPresent)
     {
       printf("[%d] %d\n", process->jid, pid);

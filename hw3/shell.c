@@ -14,10 +14,7 @@ void handle_sigint(int signum)
 int main()
 {
   signal(SIGINT, handle_sigint);
-  sigset_t mask_sigtstp;
-  sigemptyset(&mask_sigtstp);
-  sigaddset(&mask_sigtstp, SIGTSTP);
-  sigprocmask(SIG_BLOCK, &mask_sigtstp, NULL);
+  signal(SIGTSTP, SIG_IGN);
   pid_t shell_pid = getpid();
   tcsetpgrp(STDIN_FILENO, shell_pid);
   Stack *jobStack = malloc(sizeof(Stack));
@@ -35,7 +32,6 @@ int main()
       char c;
       if (scanf("%c", &c) == EOF)
       {
-        // handle ctrl + z placeholder
         breakpt = true;
         break;
       }
@@ -70,7 +66,9 @@ int main()
     free(bufTemp);
     InputParse *parsedInput = parseInput(buf);
     if (parsedInput != NULL)
+    {
       createProcess(parsedInput, jobStack, shell_pid);
+    }
     free(buf);
   }
   freeStack(jobStack);
