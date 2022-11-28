@@ -12,6 +12,8 @@
 #include "process.h"
 #include "parser.h"
 
+//BUG: exit causes memory leaks
+
 void putProcessInBackground(Process *process)
 {
   if (process->status == 1)
