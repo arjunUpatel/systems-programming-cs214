@@ -57,6 +57,7 @@ int main()
     if (breakpt)
     {
       free(bufTemp);
+      exitShell(jobStack);
       break;
     }
 

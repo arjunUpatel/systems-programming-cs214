@@ -188,7 +188,7 @@ void killJob(Stack *jobStack, Process *process, pid_t shell_pid)
   }
 }
 
-void exitShell(InputParse *inputParse, Stack *jobStack)
+void exitShell(Stack *jobStack)
 {
   Process *process = pop(jobStack);
   while (process != NULL)
@@ -204,8 +204,8 @@ void exitShell(InputParse *inputParse, Stack *jobStack)
     freeProcess(process);
     process = pop(jobStack);
   }
-  freeInputParse(inputParse);
-  freeStack(jobStack);
+  // freeInputParse(inputParse);
+  // freeStack(jobStack);
   exit(0);
 }
 
@@ -287,7 +287,8 @@ bool runBuiltIn(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   }
   else if (strcmp(inputParse->parsedInput[0], "exit") == 0)
   {
-    exitShell(inputParse, jobStack);
+    exitShell(jobStack);
+    freeInputParse(inputParse);
   }
   else if (strcmp(inputParse->parsedInput[0], "fg") == 0)
   {

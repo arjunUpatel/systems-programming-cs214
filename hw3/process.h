@@ -18,3 +18,4 @@ typedef struct Process
 void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid);
 void printJob(Process *process);
 void freeProcess(Process *process);
+void exitShell(Stack *jobStack);
