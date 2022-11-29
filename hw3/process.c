@@ -12,8 +12,6 @@
 #include "process.h"
 #include "parser.h"
 
-// BUG: exit causes memory leaks
-
 void putProcessInBackground(Process *process)
 {
   if (process->status == 1)
@@ -62,6 +60,12 @@ void updateJobStatus(Process *process)
       flag = true;
     }
   } while (!flag);
+}
+
+void freeProcess(Process *process)
+{
+  freeInputParse(process->inputParse);
+  free(process);
 }
 
 void updateJobs(Stack *jobStack)
@@ -129,7 +133,6 @@ void putProcessInForeground(Stack *jobStack, Process *process, pid_t shell_pid)
       freeProcess(process);
       flag = true;
     }
-    // updateForegroundProcessStatus(jobStack, process, wstatus);
   } while (!flag);
   tcsetpgrp(STDIN_FILENO, shell_pid);
 }
@@ -198,6 +201,7 @@ void exitShell(InputParse *inputParse, Stack *jobStack)
     {
       killpg(process->pid, SIGCONT);
     }
+    freeProcess(process);
     process = pop(jobStack);
   }
   freeInputParse(inputParse);
@@ -346,12 +350,6 @@ bool runBuiltIn(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
   return true;
 }
 
-void freeProcess(Process *process)
-{
-  freeInputParse(process->inputParse);
-  free(process);
-}
-
 void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
 {
   sigset_t mask_all, prev_all, mask_sigchld, prev_sigchld;
@@ -436,7 +434,7 @@ void createProcess(InputParse *inputParse, Stack *jobStack, pid_t shell_pid)
     sigemptyset(&s);
     sigaddset(&s, SIGTTOU);
     sigprocmask(SIG_SETMASK, &mask_all, NULL);
-    sigprocmask(SIG_SETMASK, &s, NULL); 
+    sigprocmask(SIG_SETMASK, &s, NULL);
     if (inputParse->ampersandPresent)
     {
       printf("[%d] %d\n", process->jid, pid);
