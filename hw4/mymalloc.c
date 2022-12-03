@@ -22,9 +22,14 @@ void myinit(int allocAlg)
 {
 	heap = calloc(sizeof(char), 1000000);
 	int insertPos = 0;
-	insertPos = insertInt(1000000, insertPos, heap);
+	// insert size in front
+	insertPos = insertInt(1000000, 0, heap);
+	// insert next ptr
 	insertPos = insertInt(-1, insertPos, heap);
+	// inster prev ptr
 	insertPos = insertInt(-1, insertPos, heap);
+	// insert size in end
+	insertInt(1000000, 1000000 - 1 - 3, heap);
 	root = insertPos;
 	alg = allocAlg;
 }
