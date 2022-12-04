@@ -8,6 +8,16 @@ static int alg = -1;
 static int root = -1;
 static char *searchPtr = NULL;
 
+void printHeap(int heapSize)
+{
+  printf("Heap: ");
+  for (int i = 0; i < heapSize; i++)
+  {
+    printf("%d ", heap[i]);
+  }
+  printf("\n");
+}
+
 // returns the pointer after the 4 blocks of int
 int insertInt(int num, int insertPos, unsigned char *heap)
 {
@@ -63,14 +73,16 @@ bool readIsAllocated(int pos, unsigned char *heap)
   return heap[pos + 3] & 1;
 }
 
-void printHeap(int heapSize)
+void allocateBlock(int pos, int payloadSize, unsigned char *heap)
 {
-  printf("Heap: ");
-  for (int i = 0; i < heapSize; i++)
+  // TODO: Round up to nearest 8
+  int size = 4 + payloadSize + 4;
+  insertSize(size, true, pos, heap);
+  for (int i = pos + 4; i < pos + 4 + payloadSize; i++)
   {
-    printf("%d ", heap[i]);
+    heap[i] = 1;
   }
-  printf("\n");
+  insertSize(size, true, pos + 4 + payloadSize, heap);
 }
 
 void myinit(int allocAlg)
@@ -78,16 +90,16 @@ void myinit(int allocAlg)
   int heapSize = 32;
   heap = calloc(sizeof(unsigned char), heapSize);
   int insertPos = 0;
+
   // insert size in front
-  insertPos = insertInt(heapSize, 0, heap);
+  insertPos = insertSize(heapSize, false, insertPos, heap);
   // insert next ptr
-  insertPos = insertInt(100000, insertPos, heap);
+  insertPos = insertInt(4294967295, insertPos, heap);
   // insert prev ptr
-  insertPos = insertInt(1, insertPos, heap);
-  // insert size header
-  insertPos = insertSize(1000, true, insertPos, heap);
+  insertPos = insertInt(4294967295, insertPos, heap);
   // insert size in end
-  insertInt(heapSize, heapSize - 1 - 3, heap);
+  insertSize(heapSize, false, heapSize - 4, heap);
+
   printHeap(heapSize);
   root = insertPos;
   alg = allocAlg;
@@ -102,7 +114,38 @@ void myinit(int allocAlg)
   printf("Read pos 24: %d\n", readInt(24, heap));
 }
 
-void *mymalloc(size_t size);
+void *mymalloc(size_t size)
+{
+  if (size == 0)
+    return NULL;
+
+  int pos = 0;
+  while (1)
+  {
+    if (readSize(pos, heap) < size)
+    {
+      pos = readInt(pos + 3, heap);
+      if (pos == -2130706433)
+        return NULL;
+    }
+    else
+    {
+      allocateBlock(pos, size, heap);
+      // TODO: Remove free block data from heap
+      // TODO: Split free block
+      // TODO: Add new free block to list
+
+      printHeap(32);
+      return &heap[pos];
+    }
+  }
+
+  return NULL;
+}
+
+// Converting void pointers to char
+// void *p = &heap[pos];
+// unsigned char c = *((unsigned char *)p);
 void myfree(void *ptr);
 void *myrealloc(void *ptr, size_t size);
 
