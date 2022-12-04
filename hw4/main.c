@@ -5,7 +5,7 @@
 int main()
 {
   myinit(0);
-  char *p = mymalloc(1);
-  printf("Malloc pointer: %p\n", p);
+  mymalloc(1);
+  mymalloc(1);
   return EXIT_SUCCESS;
 }

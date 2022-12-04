@@ -8,10 +8,15 @@ static int alg = -1;
 static int root = -1;
 static char *searchPtr = NULL;
 
-void printHeap(int heapSize)
+// Equivalent to (255 255 255 255)
+// Converts to -2130706433 when read as an integer
+const int NULL_POINTER = 4294967295;
+const int HEAP_SIZE = 48;
+
+void printHeap()
 {
   printf("Heap: ");
-  for (int i = 0; i < heapSize; i++)
+  for (int i = 0; i < HEAP_SIZE; i++)
   {
     printf("%d ", heap[i]);
   }
@@ -90,23 +95,69 @@ void allocateBlock(int pos, int payloadSize, unsigned char *heap)
   insertSize(size, true, pos + 4 + payloadSize, heap);
 }
 
+void addFreeBlock(int pos, int blockSize, int next, int prev, unsigned char *heap)
+{
+  // Ensure block size can fit header, pointers, and footer
+  if (blockSize >= 16)
+  {
+    insertSize(blockSize, false, pos, heap);
+    insertInt(next, pos + 4, heap);
+    insertInt(prev, pos + 8, heap);
+    insertSize(blockSize, false, pos + blockSize - 4, heap);
+  }
+}
+
+void removeFreeBlock(int pos, unsigned char *heap)
+{
+  int size = readSize(pos, heap);
+  int next = readInt(pos + 4, heap);
+  int prev = readInt(pos + 8, heap);
+  int footerPos = pos + size - 4;
+
+  if (prev >= 0 && next >= 0)
+  {
+    // Prev and next pointers exist
+    insertInt(next, prev + 4, heap);
+    insertInt(prev, next + 8, heap);
+  }
+  else if (prev < 0 && next >= 0)
+  {
+    // Prev pointer is null
+    insertInt(NULL_POINTER, next + 8, heap);
+  }
+  else if (prev >= 0 && next < 0)
+  {
+    // Next pointer is null
+    insertInt(NULL_POINTER, prev + 4, heap);
+  }
+
+  // Clear out data to 0s
+  for (int i = pos; i < pos + 12; i++)
+  {
+    heap[i] = 0;
+  }
+  for (int i = footerPos; i < footerPos + 4; i++)
+  {
+    heap[i] = 0;
+  }
+}
+
 void myinit(int allocAlg)
 {
-  int heapSize = 32;
-  heap = calloc(sizeof(unsigned char), heapSize);
+  heap = calloc(sizeof(unsigned char), HEAP_SIZE);
   int insertPos = 0;
 
   // insert size in front
-  insertPos = insertSize(heapSize, false, insertPos, heap);
+  insertPos = insertSize(HEAP_SIZE, false, insertPos, heap);
   // insert next ptr
-  insertPos = insertInt(4294967295, insertPos, heap);
+  insertPos = insertInt(NULL_POINTER, insertPos, heap);
   // insert prev ptr
-  insertPos = insertInt(4294967295, insertPos, heap);
+  insertPos = insertInt(NULL_POINTER, insertPos, heap);
   // insert size in end
-  insertSize(heapSize, false, heapSize - 4, heap);
+  insertSize(HEAP_SIZE, false, HEAP_SIZE - 4, heap);
 
-  printHeap(heapSize);
-  root = insertPos;
+  printHeap();
+  root = 0;
   alg = allocAlg;
 
   printf("Read pos 0: %d\n", readInt(0, heap));
@@ -124,26 +175,49 @@ void *mymalloc(size_t size)
   if (size == 0)
     return NULL;
 
-  int pos = 0;
+  int blockSize = size + 8;
+  int pos = root;
   while (1)
   {
-    if (readSize(pos, heap) < size)
+    int freeBlockSize = readSize(pos, heap);
+    if (freeBlockSize < blockSize)
     {
       // Jump to next free block if size is too small
-      pos = readInt(pos + 3, heap);
-      // -2130706433 means ptr is null. May change later
-      if (pos == -2130706433)
+      pos = readInt(pos + 4, heap);
+      if (pos < 0)
         return NULL;
     }
     else
     {
       // When space is found, allocate block and return memory address
-      allocateBlock(pos, size, heap);
-      // TODO: Remove free block data from heap
-      // TODO: Split free block
-      // TODO: Add new free block to list
+      // TODO: Test block splitting
 
-      printHeap(32);
+      int next = readInt(pos + 4, heap);
+      int prev = readInt(pos + 8, heap);
+      if (freeBlockSize >= blockSize + 16)
+      {
+        // Split free block
+        removeFreeBlock(pos, heap);
+        addFreeBlock(pos + blockSize, freeBlockSize - blockSize, next, prev, heap);
+        if (prev < 0)
+          root = pos + blockSize;
+      }
+      else
+      {
+        // No space to split block
+        // TODO: Test
+        if (pos == root)
+        {
+          if (next >= 0)
+            root = next;
+          else
+            root = -1;
+        }
+        removeFreeBlock(pos, heap);
+      }
+      allocateBlock(pos, size, heap);
+
+      printHeap();
       return &heap[pos];
     }
   }
