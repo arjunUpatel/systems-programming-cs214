@@ -1,7 +1,8 @@
 #include <stdlib.h>
-#include "mymalloc.h"
+#include <stdio.h>
+// #include "mymalloc.h"
 
 int main()
-{   
-    return EXIT_SUCCESS;
+{
+  return EXIT_SUCCESS;
 }
