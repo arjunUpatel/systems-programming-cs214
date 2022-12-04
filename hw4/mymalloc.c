@@ -1,15 +1,17 @@
 #include <stdlib.h>
+#include <math.h>
 
 const HEADER_SIZE = 12;
 const FOOTER_SIZE = 4;
 const MEMORY_SIZE = 1000000;
+const NULL_PTR = -1;
 
-static void *heap = NULL;
+static char *heap = NULL;
 static int alg = -1;
-static int root = -1;
+static int root = NULL_PTR;
 
 // for next fit
-static char *searchPtr = NULL;
+static char searchPtr = NULL_PTR;
 
 // returns the pointer after the 4 blocks of int
 int insertInt(int num, int insertPos, char *heap)
@@ -24,22 +26,29 @@ int insertInt(int num, int insertPos, char *heap)
   return insertPos + 1;
 }
 
+int getInt(int ptr, char *heap)
+{
+  int res = 0;
+  for (int i = 3; i >= 0; i--)
+  {
+    res += heap[ptr] * (int)pow(8, i);
+    ptr++;
+  }
+  return res;
+}
+
 void myinit(int allocAlg)
 {
-  heap = calloc(sizeof(char), HEADER_SIZE);
+  heap = calloc(sizeof(char), MEMORY_SIZE);
   int insertPos = 0;
-
   // insert size in front
-  insertPos = insertInt(1000000, 0, heap);
+  insertPos = insertInt(MEMORY_SIZE, 0, heap);
   // insert next ptr
-
-  insertPos = insertInt(-1, insertPos, heap);
-
-  // inster prev ptr
-  insertPos = insertInt(-1, insertPos, heap);
-  
+  insertPos = insertInt(NULL_PTR, insertPos, heap);
+  // insert prev ptr
+  insertPos = insertInt(NULL_PTR, insertPos, heap);
   // insert size in end
-  insertInt(1000000, 1000000 - 1 - 3, heap);
+  insertInt(MEMORY_SIZE, MEMORY_SIZE - FOOTER_SIZE, heap);
   root = insertPos;
   alg = allocAlg;
 }
@@ -52,7 +61,7 @@ void mycleanup()
 {
   free(heap);
   heap = NULL;
-  root = -1;
-  searchPtr = NULL;
+  root = NULL_PTR;
+  searchPtr = NULL_PTR;
   alg = -1;
 }
