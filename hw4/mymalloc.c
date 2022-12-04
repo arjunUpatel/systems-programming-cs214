@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 
 static unsigned char *heap = NULL;
 static int alg = -1;
@@ -21,7 +22,6 @@ int insertInt(int num, int insertPos, unsigned char *heap)
 
 int readInt(int pos, unsigned char *heap)
 {
-  // 160+134*2^8+1*2^16
   int result = 0;
   for (int i = 24; i >= 0; i -= 8)
   {
@@ -29,6 +29,38 @@ int readInt(int pos, unsigned char *heap)
     pos++;
   }
   return result;
+}
+
+int insertSize(int size, bool isAllocated, int insertPos, unsigned char *heap)
+{
+  int value = size << 1;
+  if (isAllocated)
+    value += 1;
+  return insertInt(value, insertPos, heap);
+}
+
+int readSize(int pos, unsigned char *heap)
+{
+  int mask = 255 << 1;
+  int result = 0;
+  for (int i = 24; i >= 0; i -= 8)
+  {
+    // Mask out last bit and calculate size
+    if (i == 0)
+      result += (heap[pos] & mask);
+    else
+      result += heap[pos] * pow(2.0, i);
+    pos++;
+  }
+
+  // Shift result due to masking out last bit
+  return result >> 1;
+}
+
+bool readIsAllocated(int pos, unsigned char *heap)
+{
+  // Return value of isAllocated bit
+  return heap[pos + 3] & 1;
 }
 
 void printHeap(int heapSize)
@@ -50,8 +82,10 @@ void myinit(int allocAlg)
   insertPos = insertInt(heapSize, 0, heap);
   // insert next ptr
   insertPos = insertInt(100000, insertPos, heap);
-  // inster prev ptr
+  // insert prev ptr
   insertPos = insertInt(1, insertPos, heap);
+  // insert size header
+  insertPos = insertSize(1000, true, insertPos, heap);
   // insert size in end
   insertInt(heapSize, heapSize - 1 - 3, heap);
   printHeap(heapSize);
@@ -60,6 +94,12 @@ void myinit(int allocAlg)
 
   printf("Read pos 0: %d\n", readInt(0, heap));
   printf("Read pos 4: %d\n", readInt(4, heap));
+  printf("Read pos 8: %d\n", readInt(8, heap));
+  printf("Read pos 12: %d\n", readSize(12, heap));
+  printf("Read pos 12 allocated: %d\n", readIsAllocated(12, heap));
+  printf("Read pos 16: %d\n", readInt(16, heap));
+  printf("Read pos 20: %d\n", readInt(20, heap));
+  printf("Read pos 24: %d\n", readInt(24, heap));
 }
 
 void *mymalloc(size_t size);
