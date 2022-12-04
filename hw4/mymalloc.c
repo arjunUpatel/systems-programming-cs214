@@ -41,6 +41,7 @@ int readInt(int pos, unsigned char *heap)
   return result;
 }
 
+// Inserts size and isAllocated data
 int insertSize(int size, bool isAllocated, int insertPos, unsigned char *heap)
 {
   int value = size << 1;
@@ -49,6 +50,7 @@ int insertSize(int size, bool isAllocated, int insertPos, unsigned char *heap)
   return insertInt(value, insertPos, heap);
 }
 
+// Gets the size of a block
 int readSize(int pos, unsigned char *heap)
 {
   int mask = 255 << 1;
@@ -67,9 +69,9 @@ int readSize(int pos, unsigned char *heap)
   return result >> 1;
 }
 
+// Gets value of isAllocated bit
 bool readIsAllocated(int pos, unsigned char *heap)
 {
-  // Return value of isAllocated bit
   return heap[pos + 3] & 1;
 }
 
@@ -77,11 +79,14 @@ void allocateBlock(int pos, int payloadSize, unsigned char *heap)
 {
   // TODO: Round up to nearest 8
   int size = 4 + payloadSize + 4;
+  // Insert header
   insertSize(size, true, pos, heap);
+  // Fill payload with 1s
   for (int i = pos + 4; i < pos + 4 + payloadSize; i++)
   {
     heap[i] = 1;
   }
+  // Insert footer
   insertSize(size, true, pos + 4 + payloadSize, heap);
 }
 
@@ -124,12 +129,15 @@ void *mymalloc(size_t size)
   {
     if (readSize(pos, heap) < size)
     {
+      // Jump to next free block if size is too small
       pos = readInt(pos + 3, heap);
+      // -2130706433 means ptr is null. May change later
       if (pos == -2130706433)
         return NULL;
     }
     else
     {
+      // When space is found, allocate block and return memory address
       allocateBlock(pos, size, heap);
       // TODO: Remove free block data from heap
       // TODO: Split free block
