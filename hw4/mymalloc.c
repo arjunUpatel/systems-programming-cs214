@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <limits.h>
+#include <math.h>
 
 static unsigned char *heap = NULL;
 static int alg = -1;
@@ -19,8 +19,21 @@ int insertInt(int num, int insertPos, unsigned char *heap)
   return insertPos;
 }
 
+int readInt(int pos, unsigned char *heap)
+{
+  // 160+134*2^8+1*2^16
+  int result = 0;
+  for (int i = 24; i >= 0; i -= 8)
+  {
+    result += heap[pos] * pow(2.0, i);
+    pos++;
+  }
+  return result;
+}
+
 void printHeap(int heapSize)
 {
+  printf("Heap: ");
   for (int i = 0; i < heapSize; i++)
   {
     printf("%d ", heap[i]);
@@ -35,18 +48,18 @@ void myinit(int allocAlg)
   int insertPos = 0;
   // insert size in front
   insertPos = insertInt(heapSize, 0, heap);
-  printHeap(heapSize);
   // insert next ptr
   insertPos = insertInt(100000, insertPos, heap);
-  printHeap(heapSize);
   // inster prev ptr
   insertPos = insertInt(1, insertPos, heap);
-  printHeap(heapSize);
   // insert size in end
   insertInt(heapSize, heapSize - 1 - 3, heap);
   printHeap(heapSize);
   root = insertPos;
   alg = allocAlg;
+
+  printf("Read pos 0: %d\n", readInt(0, heap));
+  printf("Read pos 4: %d\n", readInt(4, heap));
 }
 
 void *mymalloc(size_t size);
