@@ -84,66 +84,66 @@ void setFooterSize(int pos, int size, unsigned char *heap)
   insertInt(size, pos + size - HEADER_SIZE - FOOTER_SIZE, heap);
 }
 
-// Inserts size and isAllocated data
-int insertSize(int size, bool isAllocated, int insertPos, unsigned char *heap)
-{
-  int value = size << 1;
-  if (isAllocated)
-    value += 1;
-  return insertInt(value, insertPos, heap);
-}
+// // Inserts size and isAllocated data
+// int insertSize(int size, bool isAllocated, int insertPos, unsigned char *heap)
+// {
+//   int value = size << 1;
+//   if (isAllocated)
+//     value += 1;
+//   return insertInt(value, insertPos, heap);
+// }
 
-// Gets the size of a block
-int readSize(int pos, unsigned char *heap)
-{
-  int mask = 255 << 1;
-  int result = 0;
-  for (int i = 24; i >= 0; i -= 8)
-  {
-    // Mask out last bit and calculate size
-    if (i == 0)
-      result += (heap[pos] & mask);
-    else
-      result += heap[pos] * pow(2.0, i);
-    pos++;
-  }
+// // Gets the size of a block
+// int readSize(int pos, unsigned char *heap)
+// {
+//   int mask = 255 << 1;
+//   int result = 0;
+//   for (int i = 24; i >= 0; i -= 8)
+//   {
+//     // Mask out last bit and calculate size
+//     if (i == 0)
+//       result += (heap[pos] & mask);
+//     else
+//       result += heap[pos] * pow(2.0, i);
+//     pos++;
+//   }
 
-  // Shift result due to masking out last bit
-  return result >> 1;
-}
+//   // Shift result due to masking out last bit
+//   return result >> 1;
+// }
 
-// Gets value of isAllocated bit
-bool readIsAllocated(int pos, unsigned char *heap)
-{
-  return heap[pos + 3] & 1;
-}
+// // Gets value of isAllocated bit
+// bool readIsAllocated(int pos, unsigned char *heap)
+// {
+//   return heap[pos + 3] & 1;
+// }
 
-void allocateBlock(int pos, int payloadSize, unsigned char *heap)
-{
-  // TODO: Round up to nearest 8
-  int size = 4 + payloadSize + 4;
-  // Insert header
-  setHeaderSize(pos, size, heap);
-  // Fill payload with 1s
-  for (int i = pos + 4; i < pos + 4 + payloadSize; i++)
-  {
-    heap[i] = 1;
-  }
-  // Insert footer
-  setFooterSize(pos, size, heap);
-}
+// void allocateBlock(int pos, int payloadSize, unsigned char *heap)
+// {
+//   // TODO: Round up to nearest 8
+//   int size = 4 + payloadSize + 4;
+//   // Insert header
+//   setHeaderSize(pos, size, heap);
+//   // Fill payload with 1s
+//   for (int i = pos + 4; i < pos + 4 + payloadSize; i++)
+//   {
+//     heap[i] = 1;
+//   }
+//   // Insert footer
+//   setFooterSize(pos, size, heap);
+// }
 
-void addFreeBlock(int pos, int size, int next, int prev, unsigned char *heap)
-{
-  // Ensure block size can fit header, pointers, and footer
-  if (size >= HEADER_SIZE + FOOTER_SIZE)
-  {
-    setHeaderSize(pos, size, heap);
-    setNextPtr(pos, next, heap);
-    setPrevPtr(pos, prev, heap);
-    setFooterSize(pos, size, heap);
-  }
-}
+// void addFreeBlock(int pos, int size, int next, int prev, unsigned char *heap)
+// {
+//   // Ensure block size can fit header, pointers, and footer
+//   if (size >= HEADER_SIZE + FOOTER_SIZE)
+//   {
+//     setHeaderSize(pos, size, heap);
+//     setNextPtr(pos, next, heap);
+//     setPrevPtr(pos, prev, heap);
+//     setFooterSize(pos, size, heap);
+//   }
+// }
 
 void removeFreeBlock(int pos, unsigned char *heap)
 {
@@ -234,6 +234,7 @@ void *mymalloc(size_t size)
       int prev = getPrevPtr(pos, heap);
       splitFreeBlock(pos, blockSize, freeBlockSize, heap);
 
+      // Make sure root points to first free block
       if (freeBlockSize >= blockSize + HEADER_SIZE + FOOTER_SIZE)
       {
         if (prev == NULL_POINTER)
