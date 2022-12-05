@@ -8,22 +8,25 @@ static int alg = -1;
 static int root = -1;
 static char *searchPtr = NULL;
 
-// Equivalent to (255 255 255 255)
-// Converts to -2130706433 when read as an integer
-const int NULL_POINTER = 4294967295;
-const int HEAP_SIZE = 48;
+const int HEADER_SIZE = 12;
+const int BLOCK_SIZE = 4;
+const int NEXT_PTR = 4;
+const int PREV_PTR = 4;
+const int FOOTER_SIZE = 4;
+const int MEMORY_SIZE = 48; // 1024 * 1024;
+const int ALIGNMENT = 8;
+const int NULL_POINTER = 0;
 
 void printHeap()
 {
   printf("Heap: ");
-  for (int i = 0; i < HEAP_SIZE; i++)
+  for (int i = 0; i < MEMORY_SIZE; i++)
   {
     printf("%d ", heap[i]);
   }
   printf("\n");
 }
 
-// returns the pointer after the 4 blocks of int
 int insertInt(int num, int insertPos, unsigned char *heap)
 {
   for (int i = 24; i >= 0; i -= 8)
@@ -44,6 +47,41 @@ int readInt(int pos, unsigned char *heap)
     pos++;
   }
   return result;
+}
+
+int getBlockSize(int pos, unsigned char *heap)
+{
+  return readInt(pos - HEADER_SIZE, heap);
+}
+
+int getNextPtr(int pos, unsigned char *heap)
+{
+  return readInt(pos - HEADER_SIZE + BLOCK_SIZE, heap);
+}
+
+int getPrevPtr(int pos, unsigned char *heap)
+{
+  return readInt(pos - HEADER_SIZE + BLOCK_SIZE + NEXT_PTR, heap);
+}
+
+void setHeaderSize(int pos, int size, unsigned char *heap)
+{
+  insertInt(size, pos - HEADER_SIZE, heap);
+}
+
+void setNextPtr(int pos, int newNext, unsigned char *heap)
+{
+  insertInt(newNext, pos - HEADER_SIZE + BLOCK_SIZE, heap);
+}
+
+void setPrevPtr(int pos, int newPrev, unsigned char *heap)
+{
+  insertInt(newPrev, pos - HEADER_SIZE + BLOCK_SIZE + NEXT_PTR, heap);
+}
+
+void setFooterSize(int pos, int size, unsigned char *heap)
+{
+  insertInt(size, pos + size - HEADER_SIZE - FOOTER_SIZE, heap);
 }
 
 // Inserts size and isAllocated data
@@ -85,86 +123,88 @@ void allocateBlock(int pos, int payloadSize, unsigned char *heap)
   // TODO: Round up to nearest 8
   int size = 4 + payloadSize + 4;
   // Insert header
-  insertSize(size, true, pos, heap);
+  setHeaderSize(pos, size, heap);
   // Fill payload with 1s
   for (int i = pos + 4; i < pos + 4 + payloadSize; i++)
   {
     heap[i] = 1;
   }
   // Insert footer
-  insertSize(size, true, pos + 4 + payloadSize, heap);
+  setFooterSize(pos, size, heap);
 }
 
-void addFreeBlock(int pos, int blockSize, int next, int prev, unsigned char *heap)
+void addFreeBlock(int pos, int size, int next, int prev, unsigned char *heap)
 {
   // Ensure block size can fit header, pointers, and footer
-  if (blockSize >= 16)
+  if (size >= HEADER_SIZE + FOOTER_SIZE)
   {
-    insertSize(blockSize, false, pos, heap);
-    insertInt(next, pos + 4, heap);
-    insertInt(prev, pos + 8, heap);
-    insertSize(blockSize, false, pos + blockSize - 4, heap);
+    setHeaderSize(pos, size, heap);
+    setNextPtr(pos, next, heap);
+    setPrevPtr(pos, prev, heap);
+    setFooterSize(pos, size, heap);
   }
 }
 
 void removeFreeBlock(int pos, unsigned char *heap)
 {
-  int size = readSize(pos, heap);
-  int next = readInt(pos + 4, heap);
-  int prev = readInt(pos + 8, heap);
-  int footerPos = pos + size - 4;
+  int next = getNextPtr(pos, heap);
+  int prev = getPrevPtr(pos, heap);
 
-  if (prev >= 0 && next >= 0)
+  if (prev != NULL_POINTER && next != NULL_POINTER)
   {
     // Prev and next pointers exist
-    insertInt(next, prev + 4, heap);
-    insertInt(prev, next + 8, heap);
+    setNextPtr(prev, next, heap);
+    setPrevPtr(next, prev, heap);
   }
-  else if (prev < 0 && next >= 0)
+  else if (prev == NULL_POINTER && next != NULL_POINTER)
   {
     // Prev pointer is null
-    insertInt(NULL_POINTER, next + 8, heap);
+    setPrevPtr(next, NULL_POINTER, heap);
   }
-  else if (prev >= 0 && next < 0)
+  else if (prev != NULL_POINTER && next == NULL_POINTER)
   {
     // Next pointer is null
-    insertInt(NULL_POINTER, prev + 4, heap);
+    setNextPtr(prev, NULL_POINTER, heap);
   }
+}
 
-  // Clear out data to 0s
-  for (int i = pos; i < pos + 12; i++)
-  {
-    heap[i] = 0;
-  }
-  for (int i = footerPos; i < footerPos + 4; i++)
-  {
-    heap[i] = 0;
-  }
+int splitFreeBlock(int pos, int spaceNeeded, int freeBlockSize, unsigned char *heap)
+{
+  int splitSize = freeBlockSize - spaceNeeded;
+  int splitPos = pos + spaceNeeded;
+  // copy next ptr into split
+  setNextPtr(splitPos, getNextPtr(pos, heap), heap);
+  // copy prev ptr into split
+  setPrevPtr(splitPos, getPrevPtr(pos, heap), heap);
+  // change size of split block in header
+  setHeaderSize(splitPos, splitSize, heap);
+  // change size of split block in footer
+  setFooterSize(splitPos, splitSize, heap);
+  // change size of chosen block in header
+  setHeaderSize(pos, spaceNeeded, heap);
+  // update size of chosen block in footer
+  setFooterSize(pos, spaceNeeded, heap);
+  return splitPos;
 }
 
 void myinit(int allocAlg)
 {
-  heap = calloc(sizeof(unsigned char), HEAP_SIZE);
-  int insertPos = 0;
+  heap = calloc(sizeof(unsigned char), MEMORY_SIZE);
 
-  // insert size in front
-  insertPos = insertSize(HEAP_SIZE, false, insertPos, heap);
-  // insert next ptr
-  insertPos = insertInt(NULL_POINTER, insertPos, heap);
-  // insert prev ptr
-  insertPos = insertInt(NULL_POINTER, insertPos, heap);
-  // insert size in end
-  insertSize(HEAP_SIZE, false, HEAP_SIZE - 4, heap);
+  setHeaderSize(HEADER_SIZE, MEMORY_SIZE, heap);
+  setNextPtr(HEADER_SIZE, NULL_POINTER, heap);
+  setPrevPtr(HEADER_SIZE, NULL_POINTER, heap);
+  setFooterSize(HEADER_SIZE, MEMORY_SIZE, heap);
 
   printHeap();
-  root = 0;
+  root = HEADER_SIZE;
   alg = allocAlg;
 
   printf("Read pos 0: %d\n", readInt(0, heap));
   printf("Read pos 4: %d\n", readInt(4, heap));
   printf("Read pos 8: %d\n", readInt(8, heap));
-  printf("Read pos 12: %d\n", readSize(12, heap));
-  printf("Read pos 12 allocated: %d\n", readIsAllocated(12, heap));
+  // printf("Read pos 12: %d\n", readSize(12, heap));
+  // printf("Read pos 12 allocated: %d\n", readIsAllocated(12, heap));
   printf("Read pos 16: %d\n", readInt(16, heap));
   printf("Read pos 20: %d\n", readInt(20, heap));
   printf("Read pos 24: %d\n", readInt(24, heap));
@@ -172,51 +212,45 @@ void myinit(int allocAlg)
 
 void *mymalloc(size_t size)
 {
-  if (size == 0)
+  if (size == 0 || root < 0)
     return NULL;
 
-  int blockSize = size + 8;
+  int blockSize = size + BLOCK_SIZE + FOOTER_SIZE;
   int pos = root;
   while (1)
   {
-    int freeBlockSize = readSize(pos, heap);
+    int freeBlockSize = getBlockSize(pos, heap);
     if (freeBlockSize < blockSize)
     {
       // Jump to next free block if size is too small
-      pos = readInt(pos + 4, heap);
-      if (pos < 0)
+      pos = getNextPtr(pos, heap);
+      if (pos == NULL_POINTER)
         return NULL;
     }
     else
     {
-      // When space is found, allocate block and return memory address
-      // TODO: Test block splitting
+      // When space is found, allocate block and split free block
+      int next = getNextPtr(pos, heap);
+      int prev = getPrevPtr(pos, heap);
+      splitFreeBlock(pos, blockSize, freeBlockSize, heap);
 
-      int next = readInt(pos + 4, heap);
-      int prev = readInt(pos + 8, heap);
-      if (freeBlockSize >= blockSize + 16)
+      if (freeBlockSize >= blockSize + HEADER_SIZE + FOOTER_SIZE)
       {
-        // Split free block
-        removeFreeBlock(pos, heap);
-        addFreeBlock(pos + blockSize, freeBlockSize - blockSize, next, prev, heap);
-        if (prev < 0)
+        if (prev == NULL_POINTER)
           root = pos + blockSize;
       }
       else
       {
-        // No space to split block
-        // TODO: Test
         if (pos == root)
         {
-          if (next >= 0)
+          if (next != NULL_POINTER)
             root = next;
           else
             root = -1;
         }
-        removeFreeBlock(pos, heap);
       }
-      allocateBlock(pos, size, heap);
 
+      printf("Malloced ");
       printHeap();
       return &heap[pos];
     }
