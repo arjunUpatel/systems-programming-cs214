@@ -145,44 +145,44 @@ void setFooterSize(int pos, int size, unsigned char *heap)
 //   }
 // }
 
-void removeFreeBlock(int pos, unsigned char *heap)
-{
-  int next = getNextPtr(pos, heap);
-  int prev = getPrevPtr(pos, heap);
+// void removeFreeBlock(int pos, unsigned char *heap)
+// {
+//   int next = getNextPtr(pos, heap);
+//   int prev = getPrevPtr(pos, heap);
 
-  if (prev != NULL_POINTER && next != NULL_POINTER)
-  {
-    // Prev and next pointers exist
-    setNextPtr(prev, next, heap);
-    setPrevPtr(next, prev, heap);
-  }
-  else if (prev == NULL_POINTER && next != NULL_POINTER)
-  {
-    // Prev pointer is null
-    setPrevPtr(next, NULL_POINTER, heap);
-  }
-  else if (prev != NULL_POINTER && next == NULL_POINTER)
-  {
-    // Next pointer is null
-    setNextPtr(prev, NULL_POINTER, heap);
-  }
-}
+//   if (prev != NULL_POINTER && next != NULL_POINTER)
+//   {
+//     // Prev and next pointers exist
+//     setNextPtr(prev, next, heap);
+//     setPrevPtr(next, prev, heap);
+//   }
+//   else if (prev == NULL_POINTER && next != NULL_POINTER)
+//   {
+//     // Prev pointer is null
+//     setPrevPtr(next, NULL_POINTER, heap);
+//   }
+//   else if (prev != NULL_POINTER && next == NULL_POINTER)
+//   {
+//     // Next pointer is null
+//     setNextPtr(prev, NULL_POINTER, heap);
+//   }
+// }
 
 int splitFreeBlock(int pos, int spaceNeeded, int freeBlockSize, unsigned char *heap)
 {
   int splitSize = freeBlockSize - spaceNeeded;
   int splitPos = pos + spaceNeeded;
-  // copy next ptr into split
+  // Copy next ptr into split
   setNextPtr(splitPos, getNextPtr(pos, heap), heap);
-  // copy prev ptr into split
+  // Copy prev ptr into split
   setPrevPtr(splitPos, getPrevPtr(pos, heap), heap);
-  // change size of split block in header
+  // Change size of split block in header
   setHeaderSize(splitPos, splitSize, heap);
-  // change size of split block in footer
+  // Change size of split block in footer
   setFooterSize(splitPos, splitSize, heap);
-  // change size of chosen block in header
+  // Change size of chosen block in header
   setHeaderSize(pos, spaceNeeded, heap);
-  // update size of chosen block in footer
+  // Update size of chosen block in footer
   setFooterSize(pos, spaceNeeded, heap);
   return splitPos;
 }
