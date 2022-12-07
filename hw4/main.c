@@ -5,7 +5,8 @@
 int main()
 {
   myinit(0);
-  mymalloc(1);
-  mymalloc(1);
+  void *p1 = mymalloc(1);
+  myfree(p1);
+  void *p2 = mymalloc(1);
   return EXIT_SUCCESS;
 }
