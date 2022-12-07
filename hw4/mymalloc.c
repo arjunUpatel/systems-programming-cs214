@@ -8,7 +8,7 @@ const int SIZE_HEADER = 4;
 const int NEXT_PTR = 4;
 const int PREV_PTR = 4;
 const int FOOTER_SIZE = 4;
-const int MEMORY_SIZE = 48;
+const int MEMORY_SIZE = 64;
 const int ALIGNMENT = 8;
 const int NULL_PTR = -1;
 
@@ -120,46 +120,49 @@ int calculateSpace(int size)
   return res + padding;
 }
 
-// returns pos right after header of split block
-int splitBlock(int p, int spaceNeeded, int chosenBlockSize, unsigned char *heap)
+int splitBlock(int pos, int spaceNeeded, int chosenBlockSize, unsigned char *heap)
 {
   printf("in split block\n");
-  int splitSize = chosenBlockSize - spaceNeeded;
-  int split_p = p + spaceNeeded;
-  setSizeHeader(p, spaceNeeded, true, heap);
-  setFooter(p, spaceNeeded, true, heap);
-  if (splitSize < 16)
+  setSizeHeader(pos, spaceNeeded, true, heap);
+  setFooter(pos, spaceNeeded, true, heap);
+  if (spaceNeeded < chosenBlockSize)
   {
-    setSizeHeader(split_p, ALIGNMENT, true, heap);
-    setFooter(split_p, ALIGNMENT, true, heap);
-    return p;
-  }
+    printf("gothere\n");
+    int splitSize = chosenBlockSize - spaceNeeded;
+    int split_p = pos + spaceNeeded;
+    if (splitSize < 16)
+    {
+      setSizeHeader(split_p, ALIGNMENT, false, heap);
+      setFooter(split_p, ALIGNMENT, false, heap);
+      return pos;
+    }
 
-  setSizeHeader(split_p, splitSize, false, heap);
-  setFooter(split_p, splitSize, false, heap);
-  setNextPtr(split_p, getNextPtr(p, heap), heap);
-  setPrevPtr(split_p, getPrevPtr(p, heap), heap);
-  return split_p;
+    setSizeHeader(split_p, splitSize, false, heap);
+    setFooter(split_p, splitSize, false, heap);
+    setNextPtr(split_p, getNextPtr(pos, heap), heap);
+    setPrevPtr(split_p, getPrevPtr(pos, heap), heap);
+    return split_p;
+  }
+  return pos;
 }
 
-void updatePtrs(int p, bool blockWasSplit, unsigned char *heap)
+void updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
 {
   printf("in update ptrs\n");
-  // int size = getBlockSize(p, heap);
-  int next = getNextPtr(p, heap);
-  int prev = getPrevPtr(p, heap);
+  int next = getNextPtr(pos, heap);
+  int prev = getPrevPtr(pos, heap);
   printf("next: %d\n", next);
   printf("prev: %d\n", prev);
   if (blockWasSplit)
   {
     if (prev == NULL_PTR)
-      root = p;
+      root = pos;
     else if (next == NULL_PTR)
-      setNextPtr(prev, p, heap);
+      setNextPtr(prev, pos, heap);
     else
     {
-      setNextPtr(prev, p, heap);
-      setPrevPtr(next, p, heap);
+      setNextPtr(prev, pos, heap);
+      setPrevPtr(next, pos, heap);
     }
   }
   else
@@ -207,16 +210,14 @@ void *mymalloc(size_t size)
     if (p == NULL_PTR)
       return NULL;
     int chosenBlockSize = getBlockSize(p, heap);
-    int update_p = p;
-    if (spaceNeeded < chosenBlockSize)
-      update_p = splitBlock(p, spaceNeeded, chosenBlockSize, heap);
+    int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, heap);
     bool blockWasSplit = update_p != p ? true : false;
     printf("blockWasSplit: %d\n", blockWasSplit);
     printf("update_p: %d\n", update_p);
     printHeap();
     updatePtrs(update_p, blockWasSplit, heap);
     printf("root: %d\n", root);
-    return heap + p;
+    return heap + p + SIZE_HEADER;
   }
   return NULL;
 }
