@@ -166,6 +166,7 @@ int calculateSpace(int size)
 //   }
 // }
 
+// BUG: Does it work when allocated block is same size as free block?
 int splitFreeBlock(int pos, int spaceNeeded, int freeBlockSize, unsigned char *heap)
 {
   int splitSize = freeBlockSize - spaceNeeded;
@@ -269,12 +270,18 @@ void myfree(void *ptr)
   int pos = (unsigned char *)ptr - heap;
   int size = getBlockSize(pos, heap);
 
-  if (size >= FREE_HEADER_SIZE + FOOTER_SIZE)
+  bool prevAllocated = getIsAllocated(pos - 4, heap);
+  bool nextAllocated = getIsAllocated(pos + size, heap);
+
+  if (prevAllocated && nextAllocated)
   {
-    // setHeaderSize(pos, size, heap);
-    // setNextPtr(pos, next, heap);
-    // setPrevPtr(pos, prev, heap);
-    // setFooterSize(pos, size, heap);
+    int freePos = root;
+    int nextPos = getNextPtr(freePos, heap);
+    while (freePos < pos && nextPos != NULL_POINTER && nextPos < pos)
+    {
+      freePos = nextPos;
+      nextPos = getNextPtr(freePos, heap);
+    }
   }
 }
 
