@@ -1,149 +1,174 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
+#include <limits.h>
 
-const HEADER_SIZE = 12;
-const BLOCK_SIZE = 4;
-const NEXT_PTR = 4;
-const PREV_PTR = 4;
-const FOOTER_SIZE = 4;
-const MEMORY_SIZE = 1024 * 1024;
-const ALIGNMENT = 8;
-const NULL_PTR = -1;
+const unsigned int HEADER_SIZE = 12;
+const unsigned int BLOCK_SIZE = 4;
+const unsigned int NEXT_PTR = 4;
+const unsigned int PREV_PTR = 4;
+const unsigned int FOOTER_SIZE = 4;
+const unsigned int MEMORY_SIZE = 64;
+const unsigned int ALIGNMENT = 8;
+const unsigned int NULL_PTR = 0;
 
-static char *heap = NULL;
+static unsigned char *heap = NULL;
 static int alg = -1;
-static int root = NULL_PTR;
+static unsigned int root = NULL_PTR;
 
-static char searchPtr = NULL_PTR;
+static unsigned char searchPtr = NULL_PTR;
+
+// smallest free block will be 16 btyes
+
+void printHeap()
+{
+  printf("Heap: ");
+  for (int i = 0; i < MEMORY_SIZE; i++)
+  {
+    printf("%u ", heap[i]);
+  }
+  printf("\n");
+}
 
 // returns the pointer after the 4 blocks of int
-int insertInt(int num, int insertPos, char *heap)
+unsigned int insertInt(unsigned int num, unsigned int insertPos, unsigned char *heap)
 {
-  int mask = (1 << 8) - 1;
-  for (int i = 24, j = 0; i >= 0; i -= 8, j++)
+  for (int i = 24; i >= 0; i -= 8)
   {
-    char c = ((num >> i) & mask) + '0';
+    unsigned char c = num >> i;
     heap[insertPos] = c;
-    insertPos + j;
+    insertPos++;
   }
   return insertPos + 1;
 }
 
-int getInt(int ptr, char *heap)
+unsigned int readInt(unsigned int pos, unsigned char *heap)
 {
-  int res = 0;
-  for (int i = 3; i >= 0; i--)
+  unsigned int result = 0;
+  for (int i = 24; i >= 0; i -= 8)
   {
-    res += heap[ptr] * (int)pow(8, i);
-    ptr++;
+    result += heap[pos] * pow(2.0, i);
+    pos++;
   }
-  return res;
+  return result;
 }
 
-int getBlockSize(int p, char *heap)
+unsigned int getBlockSize(unsigned int p, unsigned char *heap)
 {
-  return getInt(p - HEADER_SIZE, heap);
+  return readInt(p - HEADER_SIZE, heap);
 }
 
-int getNextPtr(int p, char *heap)
+unsigned int getNextPtr(unsigned int p, unsigned char *heap)
 {
-  return getInt(p - HEADER_SIZE + BLOCK_SIZE, heap);
+  return readInt(p - HEADER_SIZE + BLOCK_SIZE, heap);
 }
 
-int getPrevPtr(int p, char *heap)
+unsigned int getPrevPtr(unsigned int p, unsigned char *heap)
 {
-  return getInt(p - HEADER_SIZE + BLOCK_SIZE + NEXT_PTR, heap);
+  return readInt(p - HEADER_SIZE + BLOCK_SIZE + NEXT_PTR, heap);
 }
 
-void setHeaderSize(int p, int newSize, char *heap)
+void setHeaderSize(unsigned int p, unsigned int newSize, unsigned char *heap)
 {
   insertInt(newSize, p - HEADER_SIZE, heap);
 }
 
-void setNextPtr(int p, int newNext, char *heap)
+void setNextPtr(unsigned int p, unsigned int newNext, unsigned char *heap)
 {
   insertInt(newNext, p - HEADER_SIZE + BLOCK_SIZE, heap);
 }
 
-void setPrevPtr(int p, int newPrev, char *heap)
+void setPrevPtr(unsigned int p, unsigned int newPrev, unsigned char *heap)
 {
   insertInt(newPrev, p - HEADER_SIZE + BLOCK_SIZE + NEXT_PTR, heap);
 }
 
-void setFooterSize(int p, int blockSize, char *heap)
+void setFooterSize(unsigned int p, unsigned int blockSize, unsigned char *heap)
 {
   insertInt(blockSize, p + blockSize - HEADER_SIZE - FOOTER_SIZE, heap);
 }
 
 size_t spaceCalc(size_t size)
 {
-  size_t res = HEADER_SIZE + FOOTER_SIZE + size;
-  int padding = res % ALIGNMENT != 0 ? ALIGNMENT - res % ALIGNMENT : 0;
+  size_t res = BLOCK_SIZE + FOOTER_SIZE + size;
+  unsigned int padding = res % ALIGNMENT != 0 ? ALIGNMENT - res % ALIGNMENT : 0;
   return res + padding;
 }
 
-// return pos right after header of split block
-int splitBlock(int p, int spaceNeeded, int chosenBlockSize, char *heap)
+// returns pos right after header of split block
+unsigned int splitBlock(unsigned int p, unsigned int spaceNeeded, unsigned int chosenBlockSize, unsigned char *heap)
 {
-  int splitSize = chosenBlockSize - spaceNeeded;
-  int split_p = p + spaceNeeded + HEADER_SIZE;
-  // change size of chosen block in header
+  printf("in split block\n");
+  unsigned int splitSize = chosenBlockSize - spaceNeeded;
+  unsigned int split_p;
   setHeaderSize(p, spaceNeeded, heap);
-  // update size of chosen block in footer
   setFooterSize(p, spaceNeeded, heap);
-  // change size of split block in header
+  if (splitSize < 16)
+  {
+    split_p = p - NEXT_PTR - PREV_PTR + spaceNeeded;
+    insertInt(ALIGNMENT, split_p - BLOCK_SIZE, heap);
+    insertInt(ALIGNMENT, split_p, heap);
+    return p;
+  }
+
+  split_p = p + spaceNeeded;
   setHeaderSize(split_p, splitSize, heap);
-  // change size of split block in footer
   setFooterSize(split_p, splitSize, heap);
-  // copy next ptr into split
   setNextPtr(split_p, getNextPtr(p, heap), heap);
-  // copy prev ptr into split
   setPrevPtr(split_p, getPrevPtr(p, heap), heap);
   return split_p;
 }
 
-void myinit(int allocAlg)
+void updatePtrs(unsigned int p, bool blockWasSplit, unsigned char *heap)
 {
-  int p = HEADER_SIZE;
-  heap = calloc(sizeof(char), MEMORY_SIZE);
-  // insert size in front
-  setHeaderSize(p, MEMORY_SIZE, heap);
-  // insert next ptr
-  setNextPtr(p, NULL_PTR, heap);
-  // insert prev ptr
-  setPrevPtr(p, NULL_PTR, heap);
-  // insert size in end
-  setFooterSize(p, MEMORY_SIZE, heap);
-  root = p;
-  alg = allocAlg;
-}
-
-void updatePtrs(int p, int blockWasSplit, char *heap)
-{
+  printf("in update ptrs\n");
+  // unsigned int size = getBlockSize(p, heap);
+  unsigned int next = getNextPtr(p, heap);
+  unsigned int prev = getPrevPtr(p, heap);
+  printf("next: %u\n", next);
+  printf("prev: %u\n", prev);
   if (blockWasSplit)
   {
-    if (getNextPtr(p, heap) == -1)
-      setNextPtr(getPrevPtr(p, heap), p, heap);
-    if (getPrevPtr(p, heap) == -1)
-      root = getNextPtr(p, heap);
+    if (prev == NULL_PTR)
+      root = p;
+    else if (next == NULL_PTR)
+      setNextPtr(prev, p, heap);
     else
     {
-      setNextPtr(getPrevPtr(p, heap), getNextPtr(p, heap), heap);
-      setPrevPtr(getNextPtr(p, heap), getPrevPtr(p, heap), heap);
+      setNextPtr(prev, p, heap);
+      setPrevPtr(next, p, heap);
     }
   }
   else
   {
-    if (getNextPtr(p, heap) == -1)
-      setNextPtr(getPrevPtr(p, heap), NULL_PTR, heap);
-    if (getPrevPtr(p, heap) == -1)
-      root = getNextPtr(p, heap);
+    if (next == NULL_PTR && prev == NULL_PTR)
+      root = NULL_PTR;
+    else if (next == NULL_PTR)
+      setNextPtr(prev, NULL_PTR, heap);
+    else if (prev == NULL_PTR)
+    {
+      root = next;
+      setPrevPtr(next, NULL_PTR, heap);
+    }
     else
     {
-      setNextPtr(getPrevPtr(p, heap), p, heap);
-      setPrevPtr(getNextPtr(p, heap), p, heap);
+      setNextPtr(prev, next, heap);
+      setPrevPtr(next, prev, heap);
     }
   }
+}
+
+void myinit(int allocAlg)
+{
+  unsigned int p = HEADER_SIZE;
+  heap = calloc(sizeof(unsigned char), MEMORY_SIZE);
+  setHeaderSize(p, MEMORY_SIZE, heap);
+  setNextPtr(p, NULL_PTR, heap);
+  setPrevPtr(p, NULL_PTR, heap);
+  setFooterSize(p, MEMORY_SIZE, heap);
+  root = p;
+  alg = allocAlg;
 }
 
 void *mymalloc(size_t size)
@@ -151,21 +176,29 @@ void *mymalloc(size_t size)
   if (size == 0)
     return NULL;
   size_t spaceNeeded = spaceCalc(size);
+  printf("spaceNeeded: %lu\n", spaceNeeded);
   if (alg == 0)
   {
-    int p = root;
+    unsigned int p = root;
     while (p != NULL_PTR && getBlockSize(p, heap) <= spaceNeeded)
       p = getNextPtr(p, heap);
 
-    // spaceNeeded less than chosen block size
-    int chosenBlockSize = getBlockSize(p, heap);
-    int update_p = p;
+    if (p == NULL_PTR)
+      return NULL;
+
+    unsigned int chosenBlockSize = getBlockSize(p, heap);
+    unsigned int update_p = p;
     if (spaceNeeded < chosenBlockSize)
       update_p = splitBlock(p, spaceNeeded, chosenBlockSize, heap);
-    int blockWasSplit = update_p == p ? 1 : 0;
+    bool blockWasSplit = update_p != p ? true : false;
+    printf("blockWasSplit: %d\n", blockWasSplit);
+    printf("update_p: %u\n", update_p);
     updatePtrs(update_p, blockWasSplit, heap);
+    printHeap();
+    printf("root: %u\n", root);
     return heap + p;
   }
+  return NULL;
 }
 
 void myfree(void *ptr);
@@ -179,3 +212,5 @@ void mycleanup()
   searchPtr = NULL_PTR;
   alg = -1;
 }
+
+// what happens if the split part has less space than 16 bytes (the amount needed to store metadata)?
