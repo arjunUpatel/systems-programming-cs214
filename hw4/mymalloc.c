@@ -253,7 +253,15 @@ void *mymalloc(size_t size)
   }
   else if (alg == 2)
   {
-    // best fit stuff
+    int p = root, best_p = NULL_PTR;
+    while (p != NULL_PTR)
+    {
+      int size = getBlockSize(p, heap);
+      best_p = size >= spaceNeeded && size < best_p ? size : best_p;
+      p = getNextPtr(p, heap);
+    }
+    if(best_p == NULL_PTR)
+      return NULL;
   }
   else
     return NULL;
