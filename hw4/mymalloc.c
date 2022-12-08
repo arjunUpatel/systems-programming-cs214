@@ -184,6 +184,28 @@ void updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
   }
 }
 
+int coalesce(int pos, unsigned char *heap)
+{
+  int newPos = pos;
+  // check if block after is allocated
+  if (pos + getBlockSize(pos, heap) < MEMORY_SIZE && !getIsAllocated(pos + getBlockSize(pos, heap), heap))
+  {
+    newPos = pos;
+    int newSize = getBlockSize(pos, heap) + getBlockSize(pos + getBlockSize(pos, heap), heap);
+    setSizeHeader(pos, newSize, false, heap);
+    setFooter(pos, newSize, false, heap);
+  }
+    // check if block before is allocated
+  if (0 < pos - FOOTER_SIZE && !getIsAllocated(pos - FOOTER_SIZE, heap))
+  {
+    newPos = pos - getBlockSize(pos - FOOTER_SIZE, heap);
+    int newSize = getBlockSize(newPos, heap) + getBlockSize(pos, heap);
+    setSizeHeader(newPos, newSize, false, heap);
+    setFooter(newPos, newSize, false, heap);
+  }
+  return newPos;
+}
+
 void myinit(int allocAlg)
 {
   heap = calloc(sizeof(unsigned char), MEMORY_SIZE);
