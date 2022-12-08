@@ -189,6 +189,19 @@ void malloc_updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
     removeBlockFromList(pos, heap);
 }
 
+// BUG: 
+  // the neighboring blocks can be fragment block which can have neighbors in the free list
+  // in the current setup, coalescing will stop at the fragment block
+// SOLNS:
+  // 1: change the way fragments are handled (treat them as extra padding)
+  // 2: if fragment block is the neighbor, keep checking allocated block or free list is found as neighbor
+
+// BUG:
+  // fragment block will exist without being coalesced to free list: [Allocated][Fragment][Free]
+// SOLNS:
+  // 1: on the creation of fragment block, check if neighboring block is in free list and coalesce
+  // 2: treat fragments as extra padding: [[Allocated][Fragment]][Free]
+
 // splices blocks and removes spliced free blocks from the free list
 // returns to the pos of the newly created free block
 int coalesce(int pos, unsigned char *heap)
@@ -221,6 +234,22 @@ int coalesce(int pos, unsigned char *heap)
     setFooter(newPos, newSize, false, heap);
   }
   return newPos;
+}
+
+// inserts a block to the beginning of free list
+void pushBlock(int pos, unsigned char *heap)
+{
+  if (pos < 0 || pos >= MEMORY_SIZE)
+    return;
+  if (root == NULL_PTR)
+    setNextPtr(pos, NULL_PTR, heap);
+  else
+  {
+    setNextPtr(pos, root, heap);
+    setPrevPtr(root, pos, heap);
+  }
+  root = pos;
+  setPrevPtr(pos, NULL_PTR, heap);
 }
 
 void myinit(int allocAlg)
@@ -306,21 +335,11 @@ void myfree(void *ptr)
 {
   if (ptr == NULL)
     return;
-
   int pos = (unsigned char *)ptr - heap;
-  int size = getBlockSize(pos, heap);
-
   // coalesce block and update pointers of blocks around the splice
   int newPos = coalesce(pos, heap);
   // add newly free block to front of list
-
-  if (size >= FREE_HEADER_SIZE + FOOTER_SIZE)
-  {
-    // setSizeHeader(pos, size, heap);
-    // setNextPtr(pos, next, heap);
-    // setPrevPtr(pos, prev, heap);
-    // setFooter(pos, size, heap);
-  }
+  pushBlock(newPos, heap);
 }
 
 void *myrealloc(void *ptr, size_t size);
