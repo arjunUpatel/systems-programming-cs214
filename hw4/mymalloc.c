@@ -195,13 +195,15 @@ int coalesce(int pos, unsigned char *heap)
     setSizeHeader(pos, newSize, false, heap);
     setFooter(pos, newSize, false, heap);
   }
-    // check if block before is allocated
+  // check if block before is allocated
   if (0 < pos - FOOTER_SIZE && !getIsAllocated(pos - FOOTER_SIZE, heap))
   {
     newPos = pos - getBlockSize(pos - FOOTER_SIZE, heap);
     int newSize = getBlockSize(newPos, heap) + getBlockSize(pos, heap);
     setSizeHeader(newPos, newSize, false, heap);
     setFooter(newPos, newSize, false, heap);
+    setNextPtr(newPos, getNextPtr(pos, heap), heap);
+    setPrevPtr(newPos, getPrevPtr(pos, heap), heap);
   }
   return newPos;
 }
