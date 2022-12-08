@@ -146,7 +146,27 @@ int splitBlock(int pos, int spaceNeeded, int chosenBlockSize, unsigned char *hea
   return pos;
 }
 
-void updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
+void removeBlockFromList(int pos, unsigned char *heap)
+{
+  int next = getNextPtr(pos, heap);
+  int prev = getPrevPtr(pos, heap);
+  if (next == NULL_PTR && prev == NULL_PTR)
+    root = NULL_PTR;
+  else if (next == NULL_PTR)
+    setNextPtr(prev, NULL_PTR, heap);
+  else if (prev == NULL_PTR)
+  {
+    root = next;
+    setPrevPtr(next, NULL_PTR, heap);
+  }
+  else
+  {
+    setNextPtr(prev, next, heap);
+    setPrevPtr(next, prev, heap);
+  }
+}
+
+void malloc_updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
 {
   printf("in update ptrs\n");
   int next = getNextPtr(pos, heap);
@@ -166,30 +186,22 @@ void updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
     }
   }
   else
-  {
-    if (next == NULL_PTR && prev == NULL_PTR)
-      root = NULL_PTR;
-    else if (next == NULL_PTR)
-      setNextPtr(prev, NULL_PTR, heap);
-    else if (prev == NULL_PTR)
-    {
-      root = next;
-      setPrevPtr(next, NULL_PTR, heap);
-    }
-    else
-    {
-      setNextPtr(prev, next, heap);
-      setPrevPtr(next, prev, heap);
-    }
-  }
+    removeBlockFromList(pos, heap);
 }
 
+// splices blocks and removes spliced free blocks from the free list
+// returns to the pos of the newly created free block
 int coalesce(int pos, unsigned char *heap)
 {
   int newPos = pos;
   // check if block after is allocated
   if (pos + getBlockSize(pos, heap) < MEMORY_SIZE && !getIsAllocated(pos + getBlockSize(pos, heap), heap))
   {
+    int nbr = pos + getBlockSize(pos, heap);
+    // remove neighbor from free list ifit is in free list
+    if (getBlockSize(nbr, heap) >= 16)
+      removeBlockFromList(nbr, heap);
+    // merge block
     newPos = pos;
     int newSize = getBlockSize(pos, heap) + getBlockSize(pos + getBlockSize(pos, heap), heap);
     setSizeHeader(pos, newSize, false, heap);
@@ -198,12 +210,15 @@ int coalesce(int pos, unsigned char *heap)
   // check if block before is allocated
   if (0 < pos - FOOTER_SIZE && !getIsAllocated(pos - FOOTER_SIZE, heap))
   {
+    int nbr = pos - getBlockSize(pos - FOOTER_SIZE, heap);
+    // remove neighbor from free list ifit is in free list
+    if (getBlockSize(nbr, heap) >= 16)
+      removeBlockFromList(nbr, heap);
+    // merge block
     newPos = pos - getBlockSize(pos - FOOTER_SIZE, heap);
     int newSize = getBlockSize(newPos, heap) + getBlockSize(pos, heap);
     setSizeHeader(newPos, newSize, false, heap);
     setFooter(newPos, newSize, false, heap);
-    setNextPtr(newPos, getNextPtr(pos, heap), heap);
-    setPrevPtr(newPos, getPrevPtr(pos, heap), heap);
   }
   return newPos;
 }
@@ -260,7 +275,7 @@ void *mymalloc(size_t size)
       best_p = size >= spaceNeeded && size < best_p ? size : best_p;
       p = getNextPtr(p, heap);
     }
-    if(best_p == NULL_PTR)
+    if (best_p == NULL_PTR)
       return NULL;
   }
   else
@@ -271,7 +286,7 @@ void *mymalloc(size_t size)
   printf("blockWasSplit: %d\n", blockWasSplit);
   printf("update_p: %d\n", update_p);
   printHeap();
-  updatePtrs(update_p, blockWasSplit, heap);
+  malloc_updatePtrs(update_p, blockWasSplit, heap);
   printf("root: %d\n", root);
   if (alg == 2)
   {
@@ -294,6 +309,10 @@ void myfree(void *ptr)
 
   int pos = (unsigned char *)ptr - heap;
   int size = getBlockSize(pos, heap);
+
+  // coalesce block and update pointers of blocks around the splice
+  int newPos = coalesce(pos, heap);
+  // add newly free block to front of list
 
   if (size >= FREE_HEADER_SIZE + FOOTER_SIZE)
   {
