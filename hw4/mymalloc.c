@@ -197,29 +197,60 @@ void myinit(int allocAlg)
 
 void *mymalloc(size_t size)
 {
-  if (size == 0)
+  if (size == 0 || root == NULL_PTR)
     return NULL;
+  int p;
   size_t spaceNeeded = calculateSpace(size);
   printf("spaceNeeded: %lu\n", spaceNeeded);
   if (alg == 0)
   {
-    int p = root;
+    p = root;
     while (p != NULL_PTR && getBlockSize(p, heap) < spaceNeeded)
       p = getNextPtr(p, heap);
-
     if (p == NULL_PTR)
       return NULL;
-    int chosenBlockSize = getBlockSize(p, heap);
-    int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, heap);
-    bool blockWasSplit = update_p != p ? true : false;
-    printf("blockWasSplit: %d\n", blockWasSplit);
-    printf("update_p: %d\n", update_p);
-    printHeap();
-    updatePtrs(update_p, blockWasSplit, heap);
-    printf("root: %d\n", root);
-    return heap + p + SIZE_HEADER;
   }
-  return NULL;
+  else if (alg == 1)
+  {
+    p = searchPtr;
+    if (getBlockSize(p, heap) < spaceNeeded)
+    {
+      int stop_p = p;
+      do
+      {
+        p = getNextPtr(p, heap);
+        if (p == NULL_PTR)
+          p = root;
+      } while (p != stop_p && getBlockSize(p, heap) < spaceNeeded);
+
+      if (p == stop_p)
+        return NULL;
+    }
+  }
+  else if (alg == 2)
+  {
+    // best fit stuff
+  }
+  else
+    return NULL;
+  int chosenBlockSize = getBlockSize(p, heap);
+  int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, heap);
+  bool blockWasSplit = update_p != p ? true : false;
+  printf("blockWasSplit: %d\n", blockWasSplit);
+  printf("update_p: %d\n", update_p);
+  printHeap();
+  updatePtrs(update_p, blockWasSplit, heap);
+  printf("root: %d\n", root);
+  if (alg == 2)
+  {
+    if (blockWasSplit)
+      searchPtr = update_p;
+    else
+      searchPtr = getNextPtr(update_p, heap);
+    if (searchPtr == NULL_PTR)
+      searchPtr = root;
+  }
+  return heap + p + SIZE_HEADER;
 }
 
 // Converting void pointers to char
