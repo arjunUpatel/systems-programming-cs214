@@ -343,6 +343,38 @@ void *myrealloc(void *ptr, size_t size)
     myfree(ptr);
     return NULL;
   }
+
+  int pos = (unsigned char *)ptr - heap - SIZE_HEADER;
+
+  size_t spaceNeeded = calculateSpace(size);
+  int totalSize = getBlockSize(pos, heap);
+  if (!getIsAllocated(pos + totalSize, heap))
+    totalSize += getBlockSize(pos + totalSize, heap);
+
+  // Enough space, resize current pointer
+  if (totalSize >= spaceNeeded)
+  {
+    int update_p = splitBlock(pos, spaceNeeded, totalSize, heap);
+    bool blockWasSplit = update_p != pos ? true : false;
+    malloc_updatePtrs(update_p, blockWasSplit, heap);
+    return ptr;
+  }
+
+  // Not enough space, find new memory location
+  void *newPtr = mymalloc(size);
+  int newPos = (unsigned char *)newPtr - heap - SIZE_HEADER;
+  if (newPtr != NULL)
+  {
+    // Copy data to new location
+    for (int i = 0; i < getBlockSize(pos, heap) - SIZE_HEADER - FOOTER_SIZE; i++)
+    {
+      heap[newPos + SIZE_HEADER + i] = heap[pos + SIZE_HEADER + i];
+    }
+    myfree(ptr);
+    return newPtr;
+  }
+
+  return NULL;
 }
 
 void mycleanup()
