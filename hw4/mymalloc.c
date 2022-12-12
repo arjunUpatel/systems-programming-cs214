@@ -8,14 +8,14 @@ const int SIZE_HEADER = 4;
 const int NEXT_PTR = 4;
 const int PREV_PTR = 4;
 const int FOOTER_SIZE = 4;
-const int MEMORY_SIZE = 64;
+const int MEMORY_SIZE = 80;
 const int ALIGNMENT = 8;
 const int NULL_PTR = -1;
 
 static unsigned char *heap = NULL;
 static int alg = -1;
 static int root = NULL_PTR;
-static unsigned char searchPtr = NULL_PTR;
+static int searchPtr = NULL_PTR;
 
 // TODO: fix issues with next fit algo (update searchPtr aptly)
 
@@ -160,14 +160,19 @@ void removeBlockFromList(int pos, unsigned char *heap)
   }
 }
 
-void malloc_updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
+void updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
 {
   int next = getNextPtr(pos, heap);
   int prev = getPrevPtr(pos, heap);
   if (blockWasSplit)
   {
-    if (prev == NULL_PTR)
+    if(prev == NULL_PTR && next == NULL_PTR)
       root = pos;
+    else if (prev == NULL_PTR)
+    {
+      root = pos;
+      setPrevPtr(next, pos, heap);
+    }
     else if (next == NULL_PTR)
       setNextPtr(prev, pos, heap);
     else
@@ -293,7 +298,7 @@ void *mymalloc(size_t size)
   int chosenBlockSize = getBlockSize(p, heap);
   int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, false, heap);
   bool blockWasSplit = update_p != p ? true : false;
-  malloc_updatePtrs(update_p, blockWasSplit, heap);
+  updatePtrs(update_p, blockWasSplit, heap);
   if (alg == 1)
   {
     if (blockWasSplit)
@@ -316,11 +321,8 @@ void myfree(void *ptr)
   int newPos = coalesce(pos - SIZE_HEADER, heap);
   // add newly free block to front of list
   pushBlock(newPos, heap);
-  // TODO: update search ptr if it became null
   if (searchPtr == NULL_PTR)
     searchPtr = root;
-  printf("root after free: %d\n", root);
-  printf("searchptr after free: %d\n", searchPtr);
 }
 
 void *myrealloc(void *ptr, size_t size)
@@ -345,11 +347,10 @@ void *myrealloc(void *ptr, size_t size)
   // Enough space, resize current pointer
   if (totalSize >= spaceNeeded)
   {
-    // i am pretty sure the freed block should go to the front of the free list
     int update_p = splitBlock(pos, spaceNeeded, totalSize, true, heap);
     bool blockWasSplit = update_p != pos ? true : false;
-    myfree(heap + update_p + SIZE_HEADER);
-    // malloc_updatePtrs(update_p, blockWasSplit, heap);
+    updatePtrs(update_p, blockWasSplit, heap);
+    // update searchptr here
     return ptr;
   }
 
