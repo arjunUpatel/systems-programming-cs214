@@ -17,6 +17,8 @@ static int alg = -1;
 static int root = NULL_PTR;
 static unsigned char searchPtr = NULL_PTR;
 
+// TODO: fix issues with next fit algo (update searchPtr aptly)
+
 void printHeap()
 {
   printf("Heap: ");
@@ -119,28 +121,23 @@ int calculateSpace(int size)
   return res + padding;
 }
 
-int splitBlock(int pos, int spaceNeeded, int chosenBlockSize, unsigned char *heap)
+int splitBlock(int pos, int spaceNeeded, int chosenBlockSize, bool splitAllocatedState, unsigned char *heap)
 {
+  int splitSize = chosenBlockSize - spaceNeeded;
+  int split_p = pos + spaceNeeded;
+  if (splitSize < 16)
+  {
+    setSizeHeader(pos, chosenBlockSize, true, heap);
+    setFooter(pos, chosenBlockSize, true, heap);
+    return pos;
+  }
   setSizeHeader(pos, spaceNeeded, true, heap);
   setFooter(pos, spaceNeeded, true, heap);
-  if (spaceNeeded < chosenBlockSize)
-  {
-    int splitSize = chosenBlockSize - spaceNeeded;
-    int split_p = pos + spaceNeeded;
-    if (splitSize < 16)
-    {
-      setSizeHeader(split_p, ALIGNMENT, false, heap);
-      setFooter(split_p, ALIGNMENT, false, heap);
-      return pos;
-    }
-
-    setSizeHeader(split_p, splitSize, false, heap);
-    setFooter(split_p, splitSize, false, heap);
-    setNextPtr(split_p, getNextPtr(pos, heap), heap);
-    setPrevPtr(split_p, getPrevPtr(pos, heap), heap);
-    return split_p;
-  }
-  return pos;
+  setSizeHeader(split_p, splitSize, splitAllocatedState, heap);
+  setFooter(split_p, splitSize, splitAllocatedState, heap);
+  setNextPtr(split_p, getNextPtr(pos, heap), heap);
+  setPrevPtr(split_p, getPrevPtr(pos, heap), heap);
+  return split_p;
 }
 
 void removeBlockFromList(int pos, unsigned char *heap)
@@ -182,19 +179,6 @@ void malloc_updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
   else
     removeBlockFromList(pos, heap);
 }
-
-// BUG:
-// the neighboring blocks can be fragment block which can have neighbors in the free list
-// in the current setup, coalescing will stop at the fragment block
-// SOLNS:
-// 1: change the way fragments are handled (treat them as extra padding)
-// 2: if fragment block is the neighbor, keep checking allocated block or free list is found as neighbor
-
-// BUG:
-// fragment block will exist without being coalesced to free list: [Allocated][Fragment][Free]
-// SOLNS:
-// 1: on the creation of fragment block, check if neighboring block is in free list and coalesce
-// 2: treat fragments as extra padding: [[Allocated][Fragment]][Free]
 
 // splices blocks and removes spliced free blocks from the free list
 // returns to the pos of the newly created free block
@@ -257,6 +241,7 @@ void myinit(int allocAlg)
   setFooter(0, MEMORY_SIZE, false, heap);
   root = 0;
   alg = allocAlg;
+  searchPtr = root;
 }
 
 void *mymalloc(size_t size)
@@ -275,6 +260,7 @@ void *mymalloc(size_t size)
   }
   else if (alg == 1)
   {
+    printf("searchPtr: %d\n", searchPtr);
     p = searchPtr;
     if (getBlockSize(p, heap) < spaceNeeded)
     {
@@ -305,10 +291,10 @@ void *mymalloc(size_t size)
   else
     return NULL;
   int chosenBlockSize = getBlockSize(p, heap);
-  int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, heap);
+  int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, false, heap);
   bool blockWasSplit = update_p != p ? true : false;
   malloc_updatePtrs(update_p, blockWasSplit, heap);
-  if (alg == 2)
+  if (alg == 1)
   {
     if (blockWasSplit)
       searchPtr = update_p;
@@ -330,6 +316,11 @@ void myfree(void *ptr)
   int newPos = coalesce(pos - SIZE_HEADER, heap);
   // add newly free block to front of list
   pushBlock(newPos, heap);
+  // TODO: update search ptr if it became null
+  if (searchPtr == NULL_PTR)
+    searchPtr = root;
+  printf("root after free: %d\n", root);
+  printf("searchptr after free: %d\n", searchPtr);
 }
 
 void *myrealloc(void *ptr, size_t size)
@@ -354,9 +345,11 @@ void *myrealloc(void *ptr, size_t size)
   // Enough space, resize current pointer
   if (totalSize >= spaceNeeded)
   {
-    int update_p = splitBlock(pos, spaceNeeded, totalSize, heap);
+    // i am pretty sure the freed block should go to the front of the free list
+    int update_p = splitBlock(pos, spaceNeeded, totalSize, true, heap);
     bool blockWasSplit = update_p != pos ? true : false;
-    malloc_updatePtrs(update_p, blockWasSplit, heap);
+    myfree(heap + update_p + SIZE_HEADER);
+    // malloc_updatePtrs(update_p, blockWasSplit, heap);
     return ptr;
   }
 
@@ -385,5 +378,3 @@ void mycleanup()
   searchPtr = NULL_PTR;
   alg = -1;
 }
-
-// what happens if the split part has less space than 16 bytes (the amount needed to store metadata)?
