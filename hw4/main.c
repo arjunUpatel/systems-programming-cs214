@@ -13,5 +13,6 @@ int main()
   printHeap();
   myfree(p2);
   printHeap();
+  mycleanup();
   return EXIT_SUCCESS;
 }

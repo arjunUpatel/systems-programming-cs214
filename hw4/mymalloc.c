@@ -332,7 +332,18 @@ void myfree(void *ptr)
   pushBlock(newPos, heap);
 }
 
-void *myrealloc(void *ptr, size_t size);
+void *myrealloc(void *ptr, size_t size)
+{
+  if (ptr == NULL && size == 0)
+    return NULL;
+  if (ptr == NULL)
+    return mymalloc(size);
+  if (size == 0)
+  {
+    myfree(ptr);
+    return NULL;
+  }
+}
 
 void mycleanup()
 {
