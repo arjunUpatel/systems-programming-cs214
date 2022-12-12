@@ -112,7 +112,6 @@ int setFooter(int pos, int size, bool isAllocated, unsigned char *heap)
   return insertInt(value, pos + size - FOOTER_SIZE, heap);
 }
 
-// TODO: Use to add padding to allocated blocks
 int calculateSpace(int size)
 {
   int res = SIZE_HEADER + FOOTER_SIZE + size;
@@ -122,12 +121,10 @@ int calculateSpace(int size)
 
 int splitBlock(int pos, int spaceNeeded, int chosenBlockSize, unsigned char *heap)
 {
-  printf("in split block\n");
   setSizeHeader(pos, spaceNeeded, true, heap);
   setFooter(pos, spaceNeeded, true, heap);
   if (spaceNeeded < chosenBlockSize)
   {
-    printf("gothere\n");
     int splitSize = chosenBlockSize - spaceNeeded;
     int split_p = pos + spaceNeeded;
     if (splitSize < 16)
@@ -168,11 +165,8 @@ void removeBlockFromList(int pos, unsigned char *heap)
 
 void malloc_updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
 {
-  printf("in update ptrs\n");
   int next = getNextPtr(pos, heap);
   int prev = getPrevPtr(pos, heap);
-  printf("next: %d\n", next);
-  printf("prev: %d\n", prev);
   if (blockWasSplit)
   {
     if (prev == NULL_PTR)
@@ -189,49 +183,51 @@ void malloc_updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
     removeBlockFromList(pos, heap);
 }
 
-// BUG: 
-  // the neighboring blocks can be fragment block which can have neighbors in the free list
-  // in the current setup, coalescing will stop at the fragment block
+// BUG:
+// the neighboring blocks can be fragment block which can have neighbors in the free list
+// in the current setup, coalescing will stop at the fragment block
 // SOLNS:
-  // 1: change the way fragments are handled (treat them as extra padding)
-  // 2: if fragment block is the neighbor, keep checking allocated block or free list is found as neighbor
+// 1: change the way fragments are handled (treat them as extra padding)
+// 2: if fragment block is the neighbor, keep checking allocated block or free list is found as neighbor
 
 // BUG:
-  // fragment block will exist without being coalesced to free list: [Allocated][Fragment][Free]
+// fragment block will exist without being coalesced to free list: [Allocated][Fragment][Free]
 // SOLNS:
-  // 1: on the creation of fragment block, check if neighboring block is in free list and coalesce
-  // 2: treat fragments as extra padding: [[Allocated][Fragment]][Free]
+// 1: on the creation of fragment block, check if neighboring block is in free list and coalesce
+// 2: treat fragments as extra padding: [[Allocated][Fragment]][Free]
 
 // splices blocks and removes spliced free blocks from the free list
 // returns to the pos of the newly created free block
 int coalesce(int pos, unsigned char *heap)
 {
+  setSizeHeader(pos, getBlockSize(pos, heap), false, heap);
+  setFooter(pos, getBlockSize(pos, heap), false, heap);
+
   int newPos = pos;
   // check if block after is allocated
-  if (pos + getBlockSize(pos, heap) < MEMORY_SIZE && !getIsAllocated(pos + getBlockSize(pos, heap), heap))
+  int nbrNext = pos + getBlockSize(pos, heap);
+  if (nbrNext < MEMORY_SIZE && !getIsAllocated(nbrNext, heap))
   {
-    int nbr = pos + getBlockSize(pos, heap);
-    // remove neighbor from free list ifit is in free list
-    if (getBlockSize(nbr, heap) >= 16)
-      removeBlockFromList(nbr, heap);
+    // remove neighbor from free list if it is in free list
+    if (getBlockSize(nbrNext, heap) >= 16)
+      removeBlockFromList(nbrNext, heap);
     // merge block
-    newPos = pos;
-    int newSize = getBlockSize(pos, heap) + getBlockSize(pos + getBlockSize(pos, heap), heap);
+    int newSize = getBlockSize(pos, heap) + getBlockSize(nbrNext, heap);
     setSizeHeader(pos, newSize, false, heap);
     setFooter(pos, newSize, false, heap);
   }
   // check if block before is allocated
   if (0 < pos - FOOTER_SIZE && !getIsAllocated(pos - FOOTER_SIZE, heap))
   {
-    int nbr = pos - getBlockSize(pos - FOOTER_SIZE, heap);
+    int nbrPrev = pos - getBlockSize(pos - FOOTER_SIZE, heap);
     // remove neighbor from free list ifit is in free list
-    if (getBlockSize(nbr, heap) >= 16)
-      removeBlockFromList(nbr, heap);
+    if (getBlockSize(nbrPrev, heap) >= 16)
+      removeBlockFromList(nbrPrev, heap);
     // merge block
-    newPos = pos - getBlockSize(pos - FOOTER_SIZE, heap);
-    int newSize = getBlockSize(newPos, heap) + getBlockSize(pos, heap);
-    setSizeHeader(newPos, newSize, false, heap);
-    setFooter(newPos, newSize, false, heap);
+    newPos = nbrPrev;
+    int newSize = getBlockSize(nbrPrev, heap) + getBlockSize(pos, heap);
+    setSizeHeader(nbrPrev, newSize, false, heap);
+    setFooter(nbrPrev, newSize, false, heap);
   }
   return newPos;
 }
@@ -269,7 +265,6 @@ void *mymalloc(size_t size)
     return NULL;
   int p;
   size_t spaceNeeded = calculateSpace(size);
-  printf("spaceNeeded: %lu\n", spaceNeeded);
   if (alg == 0)
   {
     p = root;
@@ -312,11 +307,7 @@ void *mymalloc(size_t size)
   int chosenBlockSize = getBlockSize(p, heap);
   int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, heap);
   bool blockWasSplit = update_p != p ? true : false;
-  printf("blockWasSplit: %d\n", blockWasSplit);
-  printf("update_p: %d\n", update_p);
-  printHeap();
   malloc_updatePtrs(update_p, blockWasSplit, heap);
-  printf("root: %d\n", root);
   if (alg == 2)
   {
     if (blockWasSplit)
@@ -337,7 +328,7 @@ void myfree(void *ptr)
     return;
   int pos = (unsigned char *)ptr - heap;
   // coalesce block and update pointers of blocks around the splice
-  int newPos = coalesce(pos, heap);
+  int newPos = coalesce(pos - SIZE_HEADER, heap);
   // add newly free block to front of list
   pushBlock(newPos, heap);
 }
