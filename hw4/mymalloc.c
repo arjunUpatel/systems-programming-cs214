@@ -356,8 +356,18 @@ void *myrealloc(void *ptr, size_t size)
 
       setSizeHeader(pos, spaceNeeded, true, heap);
       setFooter(pos, spaceNeeded, true, heap);
-
-      // update searchptr here
+      if (alg == 1)
+      {
+        if (searchPtr == pos + currSize)
+        {
+          if (blockWasSplit)
+            searchPtr = update_p;
+          else
+            searchPtr = getNextPtr(pos + currSize, heap);
+        }
+        if (searchPtr == NULL_PTR)
+          searchPtr = root;
+      }
       return ptr;
     }
     // Not enough space, find new memory location
