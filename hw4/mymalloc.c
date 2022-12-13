@@ -8,7 +8,7 @@ const int SIZE_HEADER = 4;
 const int NEXT_PTR = 4;
 const int PREV_PTR = 4;
 const int FOOTER_SIZE = 4;
-const int MEMORY_SIZE = 80;
+const int MEMORY_SIZE = 96;
 const int ALIGNMENT = 8;
 const int NULL_PTR = -1;
 
@@ -16,8 +16,6 @@ static unsigned char *heap = NULL;
 static int alg = -1;
 static int root = NULL_PTR;
 static int searchPtr = NULL_PTR;
-
-// TODO: fix issues with next fit algo (update searchPtr aptly)
 
 void printHeap()
 {
@@ -121,7 +119,7 @@ int calculateSpace(int size)
   return res + padding;
 }
 
-int splitBlock(int pos, int spaceNeeded, int chosenBlockSize, bool splitAllocatedState, unsigned char *heap)
+int splitBlock(int pos, int spaceNeeded, int chosenBlockSize, unsigned char *heap)
 {
   int splitSize = chosenBlockSize - spaceNeeded;
   int split_p = pos + spaceNeeded;
@@ -133,8 +131,8 @@ int splitBlock(int pos, int spaceNeeded, int chosenBlockSize, bool splitAllocate
   }
   setSizeHeader(pos, spaceNeeded, true, heap);
   setFooter(pos, spaceNeeded, true, heap);
-  setSizeHeader(split_p, splitSize, splitAllocatedState, heap);
-  setFooter(split_p, splitSize, splitAllocatedState, heap);
+  setSizeHeader(split_p, splitSize, false, heap);
+  setFooter(split_p, splitSize, false, heap);
   setNextPtr(split_p, getNextPtr(pos, heap), heap);
   setPrevPtr(split_p, getPrevPtr(pos, heap), heap);
   return split_p;
@@ -166,7 +164,7 @@ void updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
   int prev = getPrevPtr(pos, heap);
   if (blockWasSplit)
   {
-    if(prev == NULL_PTR && next == NULL_PTR)
+    if (prev == NULL_PTR && next == NULL_PTR)
       root = pos;
     else if (prev == NULL_PTR)
     {
@@ -265,7 +263,6 @@ void *mymalloc(size_t size)
   }
   else if (alg == 1)
   {
-    printf("searchPtr: %d\n", searchPtr);
     p = searchPtr;
     if (getBlockSize(p, heap) < spaceNeeded)
     {
@@ -283,20 +280,23 @@ void *mymalloc(size_t size)
   }
   else if (alg == 2)
   {
-    int p = root, best_p = NULL_PTR;
+    int best_p = root;
+    p = getNextPtr(best_p, heap);
     while (p != NULL_PTR)
     {
       int size = getBlockSize(p, heap);
-      best_p = size >= spaceNeeded && size < best_p ? size : best_p;
+      if (size >= spaceNeeded && size < getBlockSize(best_p, heap))
+        best_p = p;
       p = getNextPtr(p, heap);
     }
     if (best_p == NULL_PTR)
       return NULL;
+    p = best_p;
   }
   else
     return NULL;
   int chosenBlockSize = getBlockSize(p, heap);
-  int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, false, heap);
+  int update_p = splitBlock(p, spaceNeeded, chosenBlockSize, heap);
   bool blockWasSplit = update_p != p ? true : false;
   updatePtrs(update_p, blockWasSplit, heap);
   if (alg == 1)
@@ -321,7 +321,7 @@ void myfree(void *ptr)
   int newPos = coalesce(pos - SIZE_HEADER, heap);
   // add newly free block to front of list
   pushBlock(newPos, heap);
-  if (searchPtr == NULL_PTR)
+  if (alg == 1 && searchPtr == NULL_PTR)
     searchPtr = root;
 }
 
@@ -340,35 +340,47 @@ void *myrealloc(void *ptr, size_t size)
   int pos = (unsigned char *)ptr - heap - SIZE_HEADER;
 
   size_t spaceNeeded = calculateSpace(size);
-  int totalSize = getBlockSize(pos, heap);
-  if (!getIsAllocated(pos + totalSize, heap))
-    totalSize += getBlockSize(pos + totalSize, heap);
-
-  // Enough space, resize current pointer
-  if (totalSize >= spaceNeeded)
-  {
-    int update_p = splitBlock(pos, spaceNeeded, totalSize, true, heap);
-    bool blockWasSplit = update_p != pos ? true : false;
-    updatePtrs(update_p, blockWasSplit, heap);
-    // update searchptr here
+  int currSize = getBlockSize(pos, heap);
+  if (spaceNeeded == currSize)
     return ptr;
-  }
-
-  // Not enough space, find new memory location
-  void *newPtr = mymalloc(size);
-  int newPos = (unsigned char *)newPtr - heap - SIZE_HEADER;
-  if (newPtr != NULL)
+  else if (spaceNeeded > currSize)
   {
-    // Copy data to new location
-    for (int i = 0; i < getBlockSize(pos, heap) - SIZE_HEADER - FOOTER_SIZE; i++)
+    int totalSize = currSize;
+    if (pos + currSize > MEMORY_SIZE && !getIsAllocated(pos + currSize, heap))
+      totalSize += getBlockSize(pos + currSize, heap);
+    if (pos + currSize > MEMORY_SIZE && totalSize >= spaceNeeded)
     {
-      heap[newPos + SIZE_HEADER + i] = heap[pos + SIZE_HEADER + i];
+      int update_p = splitBlock(pos + currSize, spaceNeeded - currSize, getBlockSize(pos + currSize, heap), heap);
+      bool blockWasSplit = update_p != pos + currSize ? true : false;
+      updatePtrs(update_p, blockWasSplit, heap);
+
+      setSizeHeader(pos, spaceNeeded, true, heap);
+      setFooter(pos, spaceNeeded, true, heap);
+
+      // update searchptr here
+      return ptr;
     }
-    myfree(ptr);
-    return newPtr;
+    // Not enough space, find new memory location
+    void *newPtr = mymalloc(size);
+    int newPos = (unsigned char *)newPtr - heap - SIZE_HEADER;
+    if (newPtr != NULL)
+    {
+      // Copy data to new location
+      for (int i = 0; i < getBlockSize(pos, heap) - SIZE_HEADER - FOOTER_SIZE; i++)
+      {
+        heap[newPos + SIZE_HEADER + i] = heap[pos + SIZE_HEADER + i];
+      }
+      myfree(ptr);
+      return newPtr;
+    }
+    return NULL;
   }
 
-  return NULL;
+  int update_p = splitBlock(pos, spaceNeeded, currSize, heap);
+  bool blockWasSplit = update_p != pos ? true : false;
+  if (blockWasSplit)
+    myfree(heap + update_p + SIZE_HEADER);
+  return ptr;
 }
 
 void mycleanup()
