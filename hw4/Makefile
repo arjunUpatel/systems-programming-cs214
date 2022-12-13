@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -Wall -Wvla -fsanitize=address
+CFLAGS = -g -Wall -Wvla -fsanitize=address -lm
 LDFLAGS =
 OBJFILES = mymalloc.o main.o
 TARGET = main
