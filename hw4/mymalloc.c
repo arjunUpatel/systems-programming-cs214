@@ -166,7 +166,7 @@ void updatePtrs(int pos, bool blockWasSplit, unsigned char *heap)
   int prev = getPrevPtr(pos, heap);
   if (blockWasSplit)
   {
-    if(prev == NULL_PTR && next == NULL_PTR)
+    if (prev == NULL_PTR && next == NULL_PTR)
       root = pos;
     else if (prev == NULL_PTR)
     {
@@ -283,14 +283,18 @@ void *mymalloc(size_t size)
   }
   else if (alg == 2)
   {
-    int p = root, best_p = NULL_PTR;
-    while (p != NULL_PTR)
+    int bestPos = root, bestSize = -1;
+    while (bestPos != NULL_PTR)
     {
-      int size = getBlockSize(p, heap);
-      best_p = size >= spaceNeeded && size < best_p ? size : best_p;
-      p = getNextPtr(p, heap);
+      int size = getBlockSize(bestPos, heap);
+      if (size >= spaceNeeded && (bestSize < 0 || size < bestSize))
+      {
+        bestSize = size;
+        p = bestPos;
+      }
+      bestPos = getNextPtr(bestPos, heap);
     }
-    if (best_p == NULL_PTR)
+    if (bestSize == -1)
       return NULL;
   }
   else
