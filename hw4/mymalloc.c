@@ -8,7 +8,7 @@ const int SIZE_HEADER = 4;
 const int NEXT_PTR = 4;
 const int PREV_PTR = 4;
 const int FOOTER_SIZE = 4;
-const int MEMORY_SIZE = 96;
+const int MEMORY_SIZE = 1024 * 1024;
 const int ALIGNMENT = 8;
 const int NULL_PTR = -1;
 

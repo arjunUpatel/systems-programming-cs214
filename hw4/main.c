@@ -2,9 +2,6 @@
 #include <stdio.h>
 #include "mymalloc.h"
 
-// BUG: best fit not reaching allocation part
-// TODO: search algorithm tests
-
 int main()
 {
   printf("\nmalloc w/ alg = 1\n");
